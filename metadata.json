@@ -1,0 +1,5 @@
+{
+  "name": "ZenTask Pro",
+  "description": "A high-performance task management application inspired by Asana, featuring smart subtasks, priority classification, and AI-powered project assistance using Gemini.",
+  "requestFramePermissions": []
+}
