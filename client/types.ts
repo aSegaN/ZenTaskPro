@@ -61,6 +61,8 @@ export interface SubTask {
   id: string;
   title: string;
   completed: boolean;
+  dueDate?: string;
+  assignee?: User;
   attachments?: Attachment[];
 }
 
