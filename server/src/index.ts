@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import path from 'path';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
@@ -31,6 +32,16 @@ import {
     logSecurityConfig
 } from './middlewares/securityMiddleware';
 
+import {
+    upload,
+    setUploadType,
+    ensureUploadDirs,
+    formatUploadedFile,
+    deleteFileByUrl,
+    handleMulterError,
+    logUploadConfig
+} from './middlewares/uploadMiddleware';
+
 // Schémas de validation
 import {
     loginSchema,
@@ -54,11 +65,17 @@ const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 4000;
 
+// Créer les dossiers d'upload
+ensureUploadDirs();
+
 // Sécurité: Helmet + CORS + Headers personnalisés
 initializeSecurity(app);
 
 // Parser JSON
 app.use(express.json());
+
+// Servir les fichiers statiques (uploads)
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Trust proxy pour obtenir la vraie IP derrière un reverse proxy
 app.set('trust proxy', 1);
@@ -77,7 +94,7 @@ app.use('/api', generalLimiter);
  * @body    { identifier: string, password: string }
  */
 app.post('/api/auth/login',
-    authLimiter, // 5 req/min - Protection brute force
+    authLimiter,
     validateBody(loginSchema),
     async (req: Request, res: Response): Promise<void> => {
         const { identifier, password } = req.body;
@@ -117,10 +134,9 @@ app.post('/api/auth/login',
  * @route   POST /api/auth/register
  * @desc    Inscription utilisateur
  * @access  Public
- * @body    { firstName, lastName, username, email, password, role?, department?, phone?, avatar? }
  */
 app.post('/api/auth/register',
-    registerLimiter, // 3 req/hour - Anti-spam
+    registerLimiter,
     validateBody(registerSchema),
     async (req: Request, res: Response): Promise<void> => {
         const { firstName, lastName, username, email, password, role, department, phone, avatar } = req.body;
@@ -147,7 +163,6 @@ app.post('/api/auth/register',
         } catch (e: any) {
             console.error('❌ Erreur register:', e);
             if (e.code === 'P2002') {
-                // Identifier le champ en conflit
                 const field = e.meta?.target?.[0] || 'email ou username';
                 res.status(400).json({
                     error: "Utilisateur existe déjà",
@@ -260,7 +275,6 @@ app.get('/api/users',
  * @route   PUT /api/users/:id
  * @desc    Modifier un utilisateur
  * @access  Private (Admin ou soi-même)
- * @body    { firstName?, lastName?, username?, email?, role?, department?, phone?, avatar? }
  */
 app.put('/api/users/:id',
     authenticate,
@@ -270,7 +284,6 @@ app.put('/api/users/:id',
         const id = getValidatedId(req);
         const { firstName, lastName, username, email, role, department, phone, avatar } = req.body;
 
-        // Vérification: Admin ou l'utilisateur lui-même
         if (req.user!.role !== 'ADMIN' && req.user!.userId !== id) {
             res.status(403).json({
                 error: "Accès non autorisé",
@@ -280,7 +293,6 @@ app.put('/api/users/:id',
             return;
         }
 
-        // Empêcher un non-admin de changer son propre rôle
         if (req.user!.role !== 'ADMIN' && role && role !== req.user!.role) {
             res.status(403).json({
                 error: "Action non autorisée",
@@ -321,7 +333,7 @@ app.put('/api/users/:id',
  * @access  Private (Admin only)
  */
 app.delete('/api/users/:id',
-    sensitiveLimiter, // 20 req/min - Opérations sensibles
+    sensitiveLimiter,
     authenticate,
     adminOnly,
     validateParams(userIdParamSchema),
@@ -385,7 +397,6 @@ app.get('/api/projects',
  * @route   POST /api/projects
  * @desc    Créer un projet
  * @access  Private (Admin ou Manager)
- * @body    { name: string, color?: string, ownerId?: string }
  */
 app.post('/api/projects',
     authenticate,
@@ -422,7 +433,7 @@ app.post('/api/projects',
  * @access  Private (Admin ou Owner)
  */
 app.delete('/api/projects/:id',
-    sensitiveLimiter, // 20 req/min - Opérations sensibles
+    sensitiveLimiter,
     authenticate,
     validateParams(projectIdParamSchema),
     async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -456,6 +467,148 @@ app.delete('/api/projects/:id',
 );
 
 // ============================================
+// ROUTES PROTÉGÉES - UPLOADS (ATTACHMENTS)
+// ============================================
+
+/**
+ * @route   POST /api/attachments/task/:taskId
+ * @desc    Uploader des fichiers pour une tâche
+ * @access  Private
+ */
+app.post('/api/attachments/task/:taskId',
+    authenticate,
+    setUploadType('tasks'),
+    upload.array('files', 5),
+    handleMulterError,
+    async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        const taskId = req.params.taskId;
+        const files = req.files as Express.Multer.File[];
+
+        if (!files || files.length === 0) {
+            res.status(400).json({ error: "Aucun fichier fourni", code: "NO_FILES" });
+            return;
+        }
+
+        try {
+            // Vérifier que la tâche existe
+            const task = await prisma.task.findUnique({ where: { id: taskId } });
+            if (!task) {
+                res.status(404).json({ error: "Tâche non trouvée", code: "TASK_NOT_FOUND" });
+                return;
+            }
+
+            // Créer les attachements en base
+            const attachments = await Promise.all(
+                files.map(file => {
+                    const formatted = formatUploadedFile(file, 'tasks');
+                    return prisma.attachment.create({
+                        data: {
+                            name: formatted.name,
+                            url: formatted.url,
+                            type: formatted.type,
+                            size: formatted.size,
+                            taskId: taskId
+                        }
+                    });
+                })
+            );
+
+            console.log(`📎 ${attachments.length} fichiers uploadés pour tâche: ${taskId}`);
+            res.json({ success: true, attachments });
+        } catch (error) {
+            console.error('❌ Erreur upload attachments:', error);
+            res.status(500).json({ error: "Erreur upload", code: "SERVER_ERROR" });
+        }
+    }
+);
+
+/**
+ * @route   POST /api/attachments/subtask/:subtaskId
+ * @desc    Uploader des fichiers pour une sous-tâche
+ * @access  Private
+ */
+app.post('/api/attachments/subtask/:subtaskId',
+    authenticate,
+    setUploadType('subtasks'),
+    upload.array('files', 5),
+    handleMulterError,
+    async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        const subtaskId = req.params.subtaskId;
+        const files = req.files as Express.Multer.File[];
+
+        if (!files || files.length === 0) {
+            res.status(400).json({ error: "Aucun fichier fourni", code: "NO_FILES" });
+            return;
+        }
+
+        try {
+            // Vérifier que la sous-tâche existe
+            const subtask = await prisma.subTask.findUnique({ where: { id: subtaskId } });
+            if (!subtask) {
+                res.status(404).json({ error: "Sous-tâche non trouvée", code: "SUBTASK_NOT_FOUND" });
+                return;
+            }
+
+            // Créer les attachements en base
+            const attachments = await Promise.all(
+                files.map(file => {
+                    const formatted = formatUploadedFile(file, 'subtasks');
+                    return prisma.attachment.create({
+                        data: {
+                            name: formatted.name,
+                            url: formatted.url,
+                            type: formatted.type,
+                            size: formatted.size,
+                            subtaskId: subtaskId
+                        }
+                    });
+                })
+            );
+
+            console.log(`📎 ${attachments.length} fichiers uploadés pour sous-tâche: ${subtaskId}`);
+            res.json({ success: true, attachments });
+        } catch (error) {
+            console.error('❌ Erreur upload attachments:', error);
+            res.status(500).json({ error: "Erreur upload", code: "SERVER_ERROR" });
+        }
+    }
+);
+
+/**
+ * @route   DELETE /api/attachments/:id
+ * @desc    Supprimer un attachment
+ * @access  Private
+ */
+app.delete('/api/attachments/:id',
+    authenticate,
+    async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        const id = req.params.id;
+        const idValue = Array.isArray(id) ? id[0] : id;
+
+        try {
+            const attachment = await prisma.attachment.findUnique({ where: { id: idValue } });
+
+            if (!attachment) {
+                res.status(404).json({ error: "Fichier non trouvé", code: "ATTACHMENT_NOT_FOUND" });
+                return;
+            }
+
+            // Supprimer le fichier physique
+            deleteFileByUrl(attachment.url);
+
+            // Supprimer l'entrée en base
+            await prisma.attachment.delete({ where: { id: idValue } });
+
+            console.log(`🗑️ Attachment supprimé: ${id}`);
+            res.json({ success: true, message: "Fichier supprimé" });
+        } catch (error) {
+            console.error('❌ Erreur DELETE attachment:', error);
+            res.status(500).json({ error: "Erreur suppression", code: "SERVER_ERROR" });
+        }
+    }
+);
+
+// ============================================
 // ROUTES PROTÉGÉES - TASKS
 // ============================================
 
@@ -482,7 +635,8 @@ const taskInclude = {
                     lastName: true,
                     avatar: true
                 }
-            }
+            },
+            attachments: true // Inclure les attachments des subtasks
         }
     },
     comments: {
@@ -497,16 +651,16 @@ const taskInclude = {
             }
         }
     },
-    attachments: true
+    attachments: true // Inclure les attachments de la tâche
 };
 
 // Helper pour formater une tâche
 const formatTask = (task: any) => ({
     ...task,
-    assignee: {
+    assignee: task.assignee ? {
         ...task.assignee,
         name: `${task.assignee.firstName} ${task.assignee.lastName}`
-    },
+    } : null,
     subtasks: task.subtasks.map((st: any) => ({
         ...st,
         assignee: st.assignee ? {
@@ -551,7 +705,6 @@ app.get('/api/tasks',
  * @route   POST /api/tasks
  * @desc    Créer une tâche
  * @access  Private
- * @body    { title, description?, status?, priority?, dueDate?, projectId, assigneeId?, subtasks? }
  */
 app.post('/api/tasks',
     authenticate,
@@ -561,7 +714,6 @@ app.post('/api/tasks',
         const finalAssigneeId = assigneeId || req.user!.userId;
 
         try {
-            // Vérifier que le projet existe
             const projectExists = await prisma.project.findUnique({ where: { id: projectId } });
             if (!projectExists) {
                 res.status(400).json({
@@ -572,7 +724,6 @@ app.post('/api/tasks',
                 return;
             }
 
-            // Vérifier que l'assigné existe
             const assigneeExists = await prisma.user.findUnique({ where: { id: finalAssigneeId } });
             if (!assigneeExists) {
                 res.status(400).json({
@@ -615,9 +766,8 @@ app.post('/api/tasks',
 
 /**
  * @route   PUT /api/tasks/:id
- * @desc    Modifier une tâche
+ * @desc    Modifier une tâche (PRÉSERVE les subtasks et leurs attachements)
  * @access  Private (Admin, Manager, ou Assignee)
- * @body    { title?, description?, status?, priority?, dueDate?, projectId?, assigneeId?, subtasks? }
  */
 app.put('/api/tasks/:id',
     authenticate,
@@ -628,9 +778,13 @@ app.put('/api/tasks/:id',
         const { title, description, status, priority, dueDate, assigneeId, projectId, subtasks } = req.body;
 
         try {
+            // Récupérer la tâche existante avec ses subtasks
             const existingTask = await prisma.task.findUnique({
                 where: { id },
-                select: { assigneeId: true }
+                include: { 
+                    subtasks: { include: { attachments: true } },
+                    attachments: true 
+                }
             });
 
             if (!existingTask) {
@@ -652,26 +806,79 @@ app.put('/api/tasks/:id',
                 return;
             }
 
+            // Préparer les données de mise à jour
+            const updateData: any = {
+                title,
+                description,
+                status,
+                priority,
+                dueDate,
+                assigneeId,
+                projectId,
+            };
+
+            // Gestion intelligente des subtasks si fournies
+            if (subtasks !== undefined) {
+                const existingSubtaskIds = existingTask.subtasks.map(st => st.id);
+                const incomingSubtaskIds = subtasks.filter((st: any) => st.id).map((st: any) => st.id);
+                
+                // Subtasks à supprimer (présentes en base mais pas dans la requête)
+                const subtasksToDelete = existingSubtaskIds.filter(id => !incomingSubtaskIds.includes(id));
+                
+                // Supprimer les fichiers associés aux subtasks supprimées
+                for (const subtaskId of subtasksToDelete) {
+                    const subtask = existingTask.subtasks.find(st => st.id === subtaskId);
+                    if (subtask && subtask.attachments) {
+                        for (const att of subtask.attachments) {
+                            deleteFileByUrl(att.url);
+                        }
+                    }
+                }
+
+                // Supprimer les subtasks qui ne sont plus dans la liste
+                if (subtasksToDelete.length > 0) {
+                    await prisma.attachment.deleteMany({
+                        where: { subtaskId: { in: subtasksToDelete } }
+                    });
+                    await prisma.subTask.deleteMany({
+                        where: { id: { in: subtasksToDelete } }
+                    });
+                }
+
+                // Mettre à jour ou créer les subtasks
+                for (const st of subtasks) {
+                    const subtaskAssigneeId = st.assignee?.id || st.assigneeId || null;
+                    
+                    if (st.id && existingSubtaskIds.includes(st.id)) {
+                        // Mise à jour d'une subtask existante
+                        await prisma.subTask.update({
+                            where: { id: st.id },
+                            data: {
+                                title: st.title,
+                                completed: st.completed || false,
+                                dueDate: st.dueDate || null,
+                                assigneeId: subtaskAssigneeId
+                            }
+                        });
+                    } else {
+                        // Création d'une nouvelle subtask
+                        await prisma.subTask.create({
+                            data: {
+                                title: st.title,
+                                completed: st.completed || false,
+                                dueDate: st.dueDate || null,
+                                assigneeId: subtaskAssigneeId,
+                                taskId: id
+                            }
+                        });
+                    }
+                }
+            }
+
+            // Mettre à jour la tâche principale
             const updatedTask = await prisma.task.update({
                 where: { id },
-                data: {
-                    title,
-                    description,
-                    status,
-                    priority,
-                    dueDate,
-                    assigneeId,
-                    projectId,
-                    subtasks: subtasks !== undefined ? {
-                        deleteMany: {},
-                        create: subtasks.map((st: any) => ({
-                            title: st.title,
-                            completed: st.completed || false,
-                            dueDate: st.dueDate,
-                            assigneeId: st.assignee?.id || st.assigneeId || null
-                        }))
-                    } : undefined
-                },
+                data: updateData,
                 include: taskInclude
             });
 
@@ -694,11 +901,11 @@ app.put('/api/tasks/:id',
 
 /**
  * @route   DELETE /api/tasks/:id
- * @desc    Supprimer une tâche
+ * @desc    Supprimer une tâche (et ses fichiers associés)
  * @access  Private (Admin, Manager, ou Assignee)
  */
 app.delete('/api/tasks/:id',
-    sensitiveLimiter, // 20 req/min - Opérations sensibles
+    sensitiveLimiter,
     authenticate,
     validateParams(taskIdParamSchema),
     async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -707,7 +914,10 @@ app.delete('/api/tasks/:id',
         try {
             const existingTask = await prisma.task.findUnique({
                 where: { id },
-                select: { assigneeId: true }
+                include: {
+                    attachments: true,
+                    subtasks: { include: { attachments: true } }
+                }
             });
 
             if (!existingTask) {
@@ -729,6 +939,19 @@ app.delete('/api/tasks/:id',
                 return;
             }
 
+            // Supprimer les fichiers physiques des attachments de la tâche
+            for (const att of existingTask.attachments) {
+                deleteFileByUrl(att.url);
+            }
+
+            // Supprimer les fichiers physiques des attachments des subtasks
+            for (const subtask of existingTask.subtasks) {
+                for (const att of subtask.attachments) {
+                    deleteFileByUrl(att.url);
+                }
+            }
+
+            // Supprimer la tâche (cascade delete en base)
             await prisma.task.delete({ where: { id } });
             console.log(`🗑️ Tâche supprimée: ${id}`);
             res.json({ success: true, message: "Tâche supprimée" });
@@ -747,7 +970,7 @@ app.get('/api/health', (req: Request, res: Response): void => {
     res.json({
         status: 'ok',
         timestamp: new Date().toISOString(),
-        version: '1.4.0',
+        version: '1.5.0',
         environment: process.env.NODE_ENV || 'development',
         features: {
             authentication: true,
@@ -755,6 +978,7 @@ app.get('/api/health', (req: Request, res: Response): void => {
             rateLimiting: true,
             helmet: true,
             cors: true,
+            fileUpload: true,
             database: 'sqlite/prisma'
         }
     });
@@ -767,7 +991,7 @@ app.get('/api/health', (req: Request, res: Response): void => {
 app.listen(PORT, () => {
     console.log('');
     console.log('╔══════════════════════════════════════════════════════════╗');
-    console.log('║           🚀 ZenTask Pro Backend v1.4.0                  ║');
+    console.log('║           🚀 ZenTask Pro Backend v1.5.0                  ║');
     console.log('╠══════════════════════════════════════════════════════════╣');
     console.log(`║  🌐 Server:     http://localhost:${PORT}                    ║`);
     console.log(`║  🔐 Auth:       JWT (2h expiration)                      ║`);
@@ -778,24 +1002,22 @@ app.listen(PORT, () => {
     console.log('╠══════════════════════════════════════════════════════════╣');
     logRateLimitConfig();
     console.log('╠══════════════════════════════════════════════════════════╣');
+    logUploadConfig();
+    console.log('╠══════════════════════════════════════════════════════════╣');
     console.log('║  📡 Endpoints:                                           ║');
     console.log('║  ├─ PUBLIC                                               ║');
-    console.log('║  │  POST /api/auth/login     [5/min]  [validated]        ║');
-    console.log('║  │  POST /api/auth/register  [3/hour] [validated]        ║');
+    console.log('║  │  POST /api/auth/login                                 ║');
+    console.log('║  │  POST /api/auth/register                              ║');
     console.log('║  │  GET  /api/health                                     ║');
-    console.log('║  ├─ PROTECTED (Bearer Token) [100/min]                   ║');
-    console.log('║  │  GET  /api/auth/me                                    ║');
-    console.log('║  │  POST /api/auth/refresh                               ║');
-    console.log('║  │  GET  /api/users                                      ║');
-    console.log('║  │  PUT  /api/users/:id      [validated]                 ║');
-    console.log('║  │  DELETE /api/users/:id    [20/min] [ADMIN]            ║');
-    console.log('║  │  GET  /api/projects                                   ║');
-    console.log('║  │  POST /api/projects       [validated] [ADMIN|MANAGER] ║');
-    console.log('║  │  DELETE /api/projects/:id [20/min] [ADMIN|OWNER]      ║');
-    console.log('║  │  GET  /api/tasks                                      ║');
-    console.log('║  │  POST /api/tasks          [validated]                 ║');
-    console.log('║  │  PUT  /api/tasks/:id      [validated]                 ║');
-    console.log('║  │  DELETE /api/tasks/:id    [20/min]                    ║');
+    console.log('║  ├─ UPLOADS                                              ║');
+    console.log('║  │  POST /api/attachments/task/:taskId                   ║');
+    console.log('║  │  POST /api/attachments/subtask/:subtaskId             ║');
+    console.log('║  │  DELETE /api/attachments/:id                          ║');
+    console.log('║  │  GET  /uploads/*  (static files)                      ║');
+    console.log('║  ├─ PROTECTED                                            ║');
+    console.log('║  │  GET/PUT/DELETE /api/users                            ║');
+    console.log('║  │  GET/POST/DELETE /api/projects                        ║');
+    console.log('║  │  GET/POST/PUT/DELETE /api/tasks                       ║');
     console.log('╚══════════════════════════════════════════════════════════╝');
     console.log('');
 });
