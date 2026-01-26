@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useMemo, useEffect, Suspense, lazy, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import TaskCard from './components/TaskCard';
@@ -8,7 +8,7 @@ import MyTasks from './components/MyTasks';
 import Login from './components/Login';
 import { authService } from './services/authService';
 import { emailService } from './services/emailService';
-import api from './services/api'; // Import de l'API
+import api from './services/api';
 import { Task, Status, Priority, Project, Notification, AppView, User, UserRole, EmailLog, SubTask } from './types';
 import { STATUS_LABELS } from './constants';
 import { Plus, X, Check, Calendar, User as UserIcon, Tag, Briefcase, ListChecks, Trash2 } from 'lucide-react';
@@ -19,6 +19,12 @@ const UserManagement = lazy(() => import('./components/UserManagement'));
 const EmailLogs = lazy(() => import('./components/EmailLogs'));
 
 const NOTIFS_STORAGE_KEY = 'zentask_notifs_v1';
+
+// ============================================
+// CONSTANTES POUR LE RAFRAÎCHISSEMENT TOKEN
+// ============================================
+const TOKEN_REFRESH_INTERVAL = 5 * 60 * 1000; // Vérifier toutes les 5 minutes
+const TOKEN_REFRESH_THRESHOLD = 10 * 60 * 1000; // Rafraîchir si moins de 10 min restantes
 
 const ViewLoader = () => (
   <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400">
@@ -49,10 +55,121 @@ const App: React.FC = () => {
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
 
-  // Sync Storage (Uniquement pour les notifs locales, le reste vient de l'API)
-  useEffect(() => { localStorage.setItem(NOTIFS_STORAGE_KEY, JSON.stringify(notifications)); }, [notifications]);
+  // ============================================
+  // GESTION DES NOTIFICATIONS
+  // ============================================
+  const addNotification = useCallback((title: string, message: string, type: 'info' | 'success' | 'warning' = 'info') => {
+    const newNotif: Notification = {
+      id: Math.random().toString(36).substr(2, 9),
+      title,
+      message,
+      time: 'À l\'instant',
+      read: false,
+      type
+    };
+    setNotifications(prev => [newNotif, ...prev]);
+  }, []);
 
+  // ============================================
+  // GESTION DE LA DÉCONNEXION (centralisée)
+  // ============================================
+  const handleLogout = useCallback(() => {
+    authService.logout();
+    setCurrentUser(null);
+    setUsers([]);
+    setProjects([]);
+    setTasks([]);
+    setCurrentView('dashboard');
+  }, []);
+
+  // ============================================
+  // RAFRAÎCHISSEMENT AUTOMATIQUE DU TOKEN
+  // ============================================
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const refreshTokenIfNeeded = async () => {
+      try {
+        const expiresAt = localStorage.getItem('expiresAt');
+        if (!expiresAt) {
+          console.log('⚠️ Pas de expiresAt trouvé, déconnexion...');
+          handleLogout();
+          return;
+        }
+
+        const timeRemaining = parseInt(expiresAt) - Date.now();
+
+        // Si le token a expiré, déconnecter
+        if (timeRemaining <= 0) {
+          console.log('⏰ Token expiré, déconnexion...');
+          addNotification('Session expirée', 'Votre session a expiré, veuillez vous reconnecter.', 'warning');
+          handleLogout();
+          return;
+        }
+
+        // Si moins de 10 minutes restantes, rafraîchir
+        if (timeRemaining < TOKEN_REFRESH_THRESHOLD) {
+          console.log(`🔄 Token expire dans ${Math.round(timeRemaining / 1000)}s, rafraîchissement...`);
+          
+          const response = await api.post('/auth/refresh');
+          const { token, expiresAt: newExpiresAt } = response.data;
+
+          // Mettre à jour le localStorage
+          localStorage.setItem('token', token);
+          localStorage.setItem('expiresAt', newExpiresAt.toString());
+
+          console.log('✅ Token rafraîchi avec succès');
+          addNotification('Session prolongée', 'Votre session a été automatiquement prolongée.', 'info');
+        }
+      } catch (error: any) {
+        console.error('❌ Erreur rafraîchissement token:', error);
+        
+        // Si erreur 401, le token est invalide → déconnexion
+        if (error.response?.status === 401) {
+          addNotification('Session invalide', 'Veuillez vous reconnecter.', 'warning');
+          handleLogout();
+        }
+      }
+    };
+
+    // Vérifier immédiatement au montage
+    refreshTokenIfNeeded();
+
+    // Puis vérifier périodiquement
+    const intervalId = setInterval(refreshTokenIfNeeded, TOKEN_REFRESH_INTERVAL);
+
+    // Cleanup
+    return () => clearInterval(intervalId);
+  }, [currentUser, handleLogout, addNotification]);
+
+  // ============================================
+  // ÉCOUTE DES ÉVÉNEMENTS DE DÉCONNEXION FORCÉE
+  // ============================================
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      console.log('🔔 Event auth:expired reçu');
+      addNotification('Session expirée', 'Vous avez été déconnecté automatiquement.', 'warning');
+      handleLogout();
+    };
+
+    // Écouter l'événement custom émis par l'intercepteur API
+    window.addEventListener('auth:expired', handleAuthExpired);
+
+    return () => {
+      window.removeEventListener('auth:expired', handleAuthExpired);
+    };
+  }, [handleLogout, addNotification]);
+
+  // ============================================
+  // SYNC STORAGE (Notifications locales)
+  // ============================================
+  useEffect(() => {
+    localStorage.setItem(NOTIFS_STORAGE_KEY, JSON.stringify(notifications));
+  }, [notifications]);
+
+  // ============================================
   // CHARGEMENT INITIAL DES DONNÉES (API)
+  // ============================================
   useEffect(() => {
     if (currentUser) {
       const fetchData = async () => {
@@ -71,32 +188,22 @@ const App: React.FC = () => {
           if (projectsRes.data.length > 0 && !activeProjectId) {
             setActiveProjectId(projectsRes.data[0].id);
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Erreur chargement données", error);
-          addNotification("Erreur Connexion", "Impossible de joindre le serveur", "warning");
+          
+          // Ne pas afficher d'erreur si c'est un 401 (géré par l'intercepteur)
+          if (error.response?.status !== 401) {
+            addNotification("Erreur Connexion", "Impossible de joindre le serveur", "warning");
+          }
         }
       };
       fetchData();
     }
   }, [currentUser]);
 
-  const addNotification = (title: string, message: string, type: 'info' | 'success' | 'warning' = 'info') => {
-    const newNotif: Notification = {
-      id: Math.random().toString(36).substr(2, 9),
-      title,
-      message,
-      time: 'À l\'instant',
-      read: false,
-      type
-    };
-    setNotifications(prev => [newNotif, ...prev]);
-  };
-
-  const handleLogout = () => {
-    authService.logout();
-    setCurrentUser(null);
-    setCurrentView('dashboard');
-  };
+  // ============================================
+  // HANDLERS
+  // ============================================
 
   const handleLogin = (user: User) => {
     setCurrentUser(user);
@@ -109,7 +216,7 @@ const App: React.FC = () => {
     try {
       const payload = {
         ...taskData,
-        assigneeId: taskData.assignee?.id, // Envoi de l'ID pour la relation
+        assigneeId: taskData.assignee?.id,
         projectId: taskData.projectId || activeProjectId
       };
 
@@ -131,11 +238,10 @@ const App: React.FC = () => {
     setSelectedTask(updatedTask);
 
     try {
-      // Appel API PUT
       await api.put(`/tasks/${updatedTask.id}`, {
         ...updatedTask,
         assigneeId: updatedTask.assignee.id,
-        subtasks: updatedTask.subtasks // Le backend gère la suppression/recréation
+        subtasks: updatedTask.subtasks
       });
 
       if (updatedTask.status === Status.DONE) {
@@ -193,17 +299,14 @@ const App: React.FC = () => {
   };
 
   // --- GESTION DES UTILISATEURS (API) ---
-  // C'est ici que ça manquait dans votre version précédente
 
   const handleAddUser = async (user: User) => {
     try {
-      // On utilise la route /auth/register pour créer un user dans la DB
       const response = await api.post('/auth/register', {
         ...user,
-        password: user.password || 'password123' // Valeur par défaut si vide
+        password: user.password || 'password123'
       });
 
-      // On ajoute le user retourné par la base (avec son vrai ID)
       setUsers(prev => [...prev, response.data]);
       addNotification('Succès', `Utilisateur ${user.firstName} ajouté à la base de données.`, 'success');
     } catch (error) {
@@ -213,17 +316,31 @@ const App: React.FC = () => {
   };
 
   const handleUpdateUser = async (user: User) => {
-    // Note: Pour que cela persiste, il faudrait une route PUT /api/users/:id sur le backend.
-    // Si elle n'existe pas encore, cela mettra juste à jour l'UI.
-    setUsers(prev => prev.map(u => u.id === user.id ? user : u));
-    addNotification('Info', 'Utilisateur mis à jour (Localement).', 'info');
+    try {
+      const response = await api.put(`/users/${user.id}`, user);
+      setUsers(prev => prev.map(u => u.id === user.id ? response.data : u));
+      addNotification('Succès', 'Utilisateur mis à jour.', 'success');
+    } catch (error) {
+      console.error(error);
+      addNotification('Erreur', 'Impossible de mettre à jour l\'utilisateur.', 'warning');
+    }
   };
 
   const handleDeleteUser = async (id: string) => {
-    // Note: Pour que cela persiste, il faudrait une route DELETE /api/users/:id sur le backend.
-    setUsers(prev => prev.filter(u => u.id !== id));
-    addNotification('Info', 'Utilisateur supprimé (Localement).', 'info');
+    try {
+      await api.delete(`/users/${id}`);
+      setUsers(prev => prev.filter(u => u.id !== id));
+      addNotification('Succès', 'Utilisateur supprimé.', 'success');
+    } catch (error: any) {
+      console.error(error);
+      const message = error.response?.data?.message || 'Impossible de supprimer l\'utilisateur.';
+      addNotification('Erreur', message, 'warning');
+    }
   };
+
+  // ============================================
+  // COMPUTED VALUES
+  // ============================================
 
   const activeProject = useMemo(() =>
     projects.find(p => p.id === activeProjectId) || projects[0],
@@ -232,6 +349,10 @@ const App: React.FC = () => {
   const filteredTasksForProject = useMemo(() =>
     tasks.filter(t => t.projectId === activeProjectId),
     [tasks, activeProjectId]);
+
+  // ============================================
+  // RENDER
+  // ============================================
 
   if (!currentUser) return <Login onLogin={handleLogin} />;
 
@@ -324,7 +445,6 @@ const App: React.FC = () => {
               <UserManagement
                 currentUser={currentUser}
                 users={users}
-                // ICI : On passe les fonctions connectées à l'API
                 onAddUser={handleAddUser}
                 onUpdateUser={handleUpdateUser}
                 onDeleteUser={handleDeleteUser}
@@ -358,7 +478,7 @@ const App: React.FC = () => {
         <TaskDetail
           task={selectedTask}
           currentUser={currentUser}
-          users={users} // On passe la liste des users pour permettre l'assignation
+          users={users}
           onClose={() => setSelectedTask(null)}
           onUpdate={updateTask}
           onDelete={deleteTask}
@@ -368,6 +488,9 @@ const App: React.FC = () => {
   );
 };
 
+// ============================================
+// TASK CREATE MODAL
+// ============================================
 const TaskCreateModal = ({ projects, users, currentUser, initialProjectId, onClose, onSubmit }: any) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -376,7 +499,6 @@ const TaskCreateModal = ({ projects, users, currentUser, initialProjectId, onClo
   const [assigneeId, setAssigneeId] = useState(currentUser.id);
   const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Subtask management
   const [subtasks, setSubtasks] = useState<Partial<SubTask>[]>([]);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
 
@@ -570,6 +692,9 @@ const TaskCreateModal = ({ projects, users, currentUser, initialProjectId, onClo
   );
 };
 
+// ============================================
+// PROJECT CREATE MODAL
+// ============================================
 const ProjectCreateModal = ({ onClose, onSubmit }: any) => {
   const [name, setName] = useState('');
   const [color, setColor] = useState('#6366f1');

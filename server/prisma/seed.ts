@@ -4,8 +4,11 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-    // 1. Nettoyer la base existante (Ordre important pour éviter les erreurs de clés étrangères)
-    // On supprime d'abord les enfants, puis les parents
+    console.log('🚀 Démarrage du seed ZenTask Pro...');
+    console.log('');
+
+    // 1. Nettoyer la base existante
+    console.log('🗑️  Nettoyage de la base de données...');
     try {
         await prisma.comment.deleteMany();
         await prisma.attachment.deleteMany();
@@ -13,53 +16,67 @@ async function main() {
         await prisma.task.deleteMany();
         await prisma.project.deleteMany();
         await prisma.user.deleteMany();
-        console.log('🗑️ Base de données nettoyée');
+        console.log('   ✓ Base nettoyée');
     } catch (error) {
-        console.log('⚠️ La base était peut-être déjà vide ou erreur de nettoyage:', error);
+        console.log('   ⚠️ La base était peut-être déjà vide');
     }
 
     // 2. Créer le mot de passe hashé
-    const hashedPassword = await bcrypt.hash('password123', 10);
+    const plainPassword = 'password123';
+    const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
-    // 3. Création de ton utilisateur Admin
+    // DEBUG: Vérifier que le hash fonctionne
+    const isValid = await bcrypt.compare(plainPassword, hashedPassword);
+    console.log('');
+    console.log('🔐 Vérification du hash bcrypt:');
+    console.log(`   Mot de passe: ${plainPassword}`);
+    console.log(`   Hash: ${hashedPassword.substring(0, 30)}...`);
+    console.log(`   Vérification: ${isValid ? '✓ OK' : '✗ ERREUR'}`);
+    console.log('');
+
+    // 3. Création de l'utilisateur Admin
+    console.log('👤 Création de l\'utilisateur Admin...');
     const adminUser = await prisma.user.create({
         data: {
-            id: 'u1', // On force l'ID pour pouvoir le lier facilement aux projets
+            id: 'u1',
             firstName: 'Abdoulaye Séga',
             lastName: 'NDIAYE',
-            username: 'asega', // Ton login
-            email: 'asega.ndiaye@cometafrique.com', // Ton login alternatif
+            username: 'asega',
+            email: 'asega.ndiaye@cometafrique.com',
             password: hashedPassword,
             role: 'ADMIN',
-            avatar: 'https://i.pravatar.cc/150?u=asega', // Avatar généré
+            avatar: 'https://i.pravatar.cc/150?u=asega',
             department: 'Direction MS',
             phone: '+221 76 529 97 59'
         }
     });
+    console.log(`   ✓ ${adminUser.firstName} ${adminUser.lastName} créé`);
+    console.log(`   📧 Email: ${adminUser.email}`);
+    console.log(`   👤 Username: ${adminUser.username}`);
 
-    console.log(`👤 Utilisateur créé: ${adminUser.firstName} ${adminUser.lastName}`);
-
-    // 4. CRUCIAL : Créer un Projet (Workspace) pour cet utilisateur
-    // Sans ça, le sidebar et le dashboard seront vides
+    // 4. Créer un projet
+    console.log('');
+    console.log('📁 Création du projet de démo...');
     const project = await prisma.project.create({
         data: {
             id: 'p1',
             name: 'Déploiement Sénégal',
-            color: '#10b981', // Vert émeraude
-            ownerId: adminUser.id // Lien avec ton utilisateur
+            color: '#10b981',
+            ownerId: adminUser.id
         }
     });
+    console.log(`   ✓ Projet "${project.name}" créé`);
 
-    console.log(`🚀 Projet créé: ${project.name}`);
-
-    // 5. Créer une Tâche de démo
-    await prisma.task.create({
+    // 5. Créer une tâche de démo
+    console.log('');
+    console.log('📝 Création de la tâche de démo...');
+    const task = await prisma.task.create({
         data: {
             title: 'Initialisation ZenTaskPro',
             description: 'Vérifier la connexion entre le Frontend React et le Backend SQLite.',
             status: 'IN_PROGRESS',
             priority: 'HIGH',
-            dueDate: new Date().toISOString().split('T')[0], // Aujourd'hui
+            dueDate: new Date().toISOString().split('T')[0],
             projectId: project.id,
             assigneeId: adminUser.id,
             subtasks: {
@@ -71,8 +88,20 @@ async function main() {
             }
         }
     });
+    console.log(`   ✓ Tâche "${task.title}" créée avec 3 sous-tâches`);
 
-    console.log('✅ Tâche de démo créée');
+    // Résumé final
+    console.log('');
+    console.log('╔════════════════════════════════════════════════════════════╗');
+    console.log('║                    ✅ SEED TERMINÉ                         ║');
+    console.log('╠════════════════════════════════════════════════════════════╣');
+    console.log('║  Compte de démo:                                           ║');
+    console.log('║  ├─ Username: asega                                        ║');
+    console.log('║  ├─ Email: asega.ndiaye@cometafrique.com                   ║');
+    console.log('║  ├─ Password: password123                                  ║');
+    console.log('║  └─ Role: ADMIN                                            ║');
+    console.log('╚════════════════════════════════════════════════════════════╝');
+    console.log('');
 }
 
 main()
