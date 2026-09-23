@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   SYSTÈME DE TOKENS — THÈME CLAIR (par défaut)
+   ============================================================ */
+:root,
+.light {
+  --canvas: #f4f6fa;
+  --surface: #ffffff;
+  --surface-2: #f1f4f9;
+  --elevated: #ffffff;
+  --ink: #0e1526;
+  --ink-soft: #55607a;
+  --ink-muted: #97a1b5;
+  --line: #e6e9f1;
+  --line-soft: #eef1f7;
+  --brand: #4f46e5;
+  --brand-soft: #eef2ff;
+  --accent: #0f172a;
+  --accent-fg: #ffffff;
+  --scrim: rgba(15, 23, 42, 0.45);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 12px -2px rgba(16, 24, 40, 0.06), 0 12px 28px -8px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 20px 48px -12px rgba(16, 24, 40, 0.14);
+  --scrollbar: #d3d9e4;
+  color-scheme: light;
+}
+
+/* ============================================================
+   SYSTÈME DE TOKENS — THÈME SOMBRE (premium, quasi-noir navy)
+   ============================================================ */
+.dark {
+  --canvas: #0a0b10;
+  --surface: #14161d;
+  --surface-2: #1b1e28;
+  --elevated: #191c25;
+  --ink: #eef1f6;
+  --ink-soft: #a4aebf;
+  --ink-muted: #6a7385;
+  --line: #262b36;
+  --line-soft: #1d222b;
+  --brand: #7c7af0;
+  --brand-soft: rgba(124, 122, 240, 0.14);
+  --accent: #4f46e5;
+  --accent-fg: #ffffff;
+  --scrim: rgba(0, 0, 0, 0.62);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px -6px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 24px 56px -12px rgba(0, 0, 0, 0.7);
+  --scrollbar: #2b3240;
+  color-scheme: dark;
+}
+
+html {
+  background-color: var(--canvas);
+}
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: var(--canvas);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Scrollbars premium (fines, adaptatives) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+  border-radius: 20px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-muted);
+  background-clip: padding-box;
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
+}
+
+/* En-tête vitré, adaptatif */
+.glass,
+.glass-header {
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* Cartes premium */
+.premium-shadow {
+  box-shadow: var(--shadow-sm);
+}
+.premium-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  transition:
+    border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.premium-card:hover {
+  border-color: color-mix(in srgb, var(--brand) 35%, var(--line));
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+.sidebar-active-glow {
+  box-shadow: var(--shadow-md);
+}
+
+/* Dégradé animé IA */
+.ai-shimmer {
+  background: linear-gradient(90deg, #4f46e5, #818cf8, #4f46e5);
+  background-size: 200% auto;
+  animation: shimmer 3s linear infinite;
+}
+@keyframes shimmer {
+  to {
+    background-position: 200% center;
+  }
+}
+
+/* Animations utilitaires */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes zoomIn95 {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

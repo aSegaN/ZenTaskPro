@@ -1,12 +1,11 @@
 
-import React from 'react';
 import { Priority, Status, UserRole, User } from './types';
 
 export const PRIORITY_COLORS: Record<Priority, string> = {
-  [Priority.URGENT]: 'bg-red-100 text-red-700 border-red-200',
-  [Priority.HIGH]: 'bg-orange-100 text-orange-700 border-orange-200',
-  [Priority.MEDIUM]: 'bg-blue-100 text-blue-700 border-blue-200',
-  [Priority.LOW]: 'bg-gray-100 text-gray-700 border-gray-200',
+  [Priority.URGENT]: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/25',
+  [Priority.HIGH]: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-500/25',
+  [Priority.MEDIUM]: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/25',
+  [Priority.LOW]: 'bg-surface2 text-inksoft border-line',
 };
 
 export const STATUS_LABELS: Record<Status, string> = {
@@ -18,11 +17,11 @@ export const STATUS_LABELS: Record<Status, string> = {
 };
 
 export const STATUS_COLORS: Record<Status, string> = {
-  [Status.TODO]: 'bg-gray-100 text-gray-600',
-  [Status.IN_PROGRESS]: 'bg-blue-100 text-blue-700',
-  [Status.REVIEW]: 'bg-purple-100 text-purple-700',
-  [Status.DONE]: 'bg-green-100 text-green-700',
-  [Status.CANCELLED]: 'bg-red-100 text-red-700',
+  [Status.TODO]: 'bg-surface2 text-inksoft',
+  [Status.IN_PROGRESS]: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
+  [Status.REVIEW]: 'bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300',
+  [Status.DONE]: 'bg-green-100 text-green-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+  [Status.CANCELLED]: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
 };
 
 export const MOCK_USERS: User[] = [

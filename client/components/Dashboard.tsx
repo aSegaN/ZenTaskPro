@@ -4,7 +4,7 @@ import { Task, Project, Status, Priority } from '../types';
 import { analyzeWorkload } from '../services/geminiService';
 import { PRIORITY_COLORS } from '../constants';
 // Added Loader2 to the imports
-import { CheckCircle2, Clock, Briefcase, Sparkles, TrendingUp, Calendar as CalendarIcon, Ban, Zap, ArrowRight, MousePointer2, Loader2 } from 'lucide-react';
+import { CheckCircle2, Clock, Briefcase, Sparkles, TrendingUp, Calendar as CalendarIcon, Zap, ArrowRight, MousePointer2, Loader2 } from 'lucide-react';
 
 export type FilterCategory = 'all' | 'urgent' | 'completed' | 'overdue' | 'cancelled';
 
@@ -41,14 +41,14 @@ const Dashboard: React.FC<DashboardProps> = ({ tasks, projects, onSelectTask, on
     .slice(0, 3);
 
   return (
-    <div className="space-y-12 animate-in fade-in duration-700">
+    <div className="space-y-6 animate-in fade-in duration-700">
       {/* Stats Bento */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard 
           title="Total Workload" 
           value={stats.total} 
           icon={<Briefcase className="w-5 h-5" />} 
-          color="bg-slate-900 text-white" 
+          color="bg-accent text-white" 
           label="Tâches"
           onClick={() => onFilterClick('all')}
         />
@@ -78,21 +78,21 @@ const Dashboard: React.FC<DashboardProps> = ({ tasks, projects, onSelectTask, on
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        <div className="lg:col-span-8 space-y-10">
-          <section className="bg-white rounded-[2.5rem] premium-card p-10">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-black text-slate-900 flex items-center gap-4">
-                <TrendingUp className="w-6 h-6 text-indigo-600" />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8 space-y-6">
+          <section className="bg-surface rounded-2xl premium-card p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-[15px] font-bold text-ink flex items-center gap-2.5">
+                <TrendingUp className="w-4 h-4 text-brand" />
                 Focus Immédiat
               </h3>
-              <button onClick={() => onFilterClick('urgent')} className="text-[11px] font-black uppercase tracking-widest text-indigo-600 flex items-center gap-2 hover:gap-3 transition-all">
+              <button onClick={() => onFilterClick('urgent')} className="text-[11px] font-bold uppercase tracking-wide text-brand flex items-center gap-2 hover:gap-3 transition-all">
                 Voir tout <ArrowRight className="w-4 h-4" />
               </button>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-2.5">
               {highPriorityTasks.length === 0 ? (
-                <div className="py-10 text-center text-slate-400 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
+                <div className="py-8 text-center text-inkmuted bg-surface2 rounded-xl border border-dashed border-line">
                     <p className="font-bold">Excellent travail, aucune urgence !</p>
                 </div>
               ) : (
@@ -100,20 +100,20 @@ const Dashboard: React.FC<DashboardProps> = ({ tasks, projects, onSelectTask, on
                   <div 
                     key={task.id} 
                     onClick={() => onSelectTask(task)}
-                    className="flex items-center p-6 rounded-3xl border border-slate-50 hover:bg-slate-50/50 hover:border-slate-200 cursor-pointer transition-all group"
+                    className="flex items-center p-3.5 rounded-xl border border-linesoft hover:bg-surface2 hover:border-line cursor-pointer transition-all group"
                   >
-                    <div className="w-14 h-14 rounded-2xl bg-white shadow-sm border border-slate-100 flex items-center justify-center mr-6 group-hover:scale-110 transition-transform">
-                        <img src={task.assignee.avatar} className="w-10 h-10 rounded-xl" alt="" />
+                    <div className="w-10 h-10 rounded-xl bg-surface shadow-sm border border-linesoft flex items-center justify-center mr-4 group-hover:scale-105 transition-transform">
+                        <img src={task.assignee.avatar} className="w-7 h-7 rounded-lg" alt="" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-black text-slate-900 text-[15px] mb-1 line-clamp-1">{task.title}</p>
-                      <div className="flex items-center gap-4 text-[11px] font-black uppercase tracking-widest text-slate-400">
+                      <p className="font-semibold text-ink text-sm mb-0.5 line-clamp-1">{task.title}</p>
+                      <div className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-wide text-inkmuted">
                         <span className="flex items-center gap-1.5"><CalendarIcon className="w-3 h-3" /> {task.dueDate}</span>
                         <span className={`flex items-center gap-1.5 ${PRIORITY_COLORS[task.priority].split(' ')[1]}`}><Zap className="w-3 h-3" /> {task.priority}</span>
                       </div>
                     </div>
-                    <div className="ml-4 p-3 rounded-2xl text-slate-300 group-hover:text-indigo-600 group-hover:bg-white group-hover:shadow-sm transition-all">
-                        <MousePointer2 className="w-5 h-5" />
+                    <div className="ml-3 p-2 rounded-xl text-inkmuted group-hover:text-brand group-hover:bg-surface2 transition-all">
+                        <MousePointer2 className="w-4 h-4" />
                     </div>
                   </div>
                 ))
@@ -121,18 +121,18 @@ const Dashboard: React.FC<DashboardProps> = ({ tasks, projects, onSelectTask, on
             </div>
           </section>
 
-          <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {projects.slice(0, 2).map(project => (
-                  <div key={project.id} onClick={() => onSelectProject(project.id)} className="bg-white p-8 rounded-[2.5rem] premium-card cursor-pointer group">
-                      <div className="flex items-center justify-between mb-6">
-                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-xl font-black shadow-lg" style={{ backgroundColor: project.color }}>{project.name[0]}</div>
+                  <div key={project.id} onClick={() => onSelectProject(project.id)} className="bg-surface p-5 rounded-2xl premium-card cursor-pointer group">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-base font-bold shadow-sm" style={{ backgroundColor: project.color }}>{project.name[0]}</div>
                         <div className="text-right">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Status</p>
-                            <p className="text-xs font-black text-slate-900">Workspace Actif</p>
+                            <p className="text-[10px] font-bold text-inkmuted uppercase tracking-wide leading-none mb-1">Status</p>
+                            <p className="text-xs font-bold text-ink">Workspace Actif</p>
                         </div>
                       </div>
-                      <h4 className="text-lg font-black text-slate-900 mb-6 group-hover:text-indigo-600 transition-colors">{project.name}</h4>
-                      <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                      <h4 className="text-sm font-bold text-ink mb-4 group-hover:text-brand transition-colors">{project.name}</h4>
+                      <div className="w-full bg-surface2 h-2 rounded-full overflow-hidden">
                           <div className="h-full bg-indigo-600 rounded-full" style={{ width: '65%', backgroundColor: project.color }}></div>
                       </div>
                   </div>
@@ -140,43 +140,43 @@ const Dashboard: React.FC<DashboardProps> = ({ tasks, projects, onSelectTask, on
           </section>
         </div>
 
-        <div className="lg:col-span-4 space-y-8">
-          <div className="bg-slate-950 rounded-[2.5rem] p-10 text-white relative overflow-hidden group border border-white/5 shadow-2xl">
+        <div className="lg:col-span-4 space-y-6">
+          <div className="bg-slate-950 rounded-2xl p-6 text-white relative overflow-hidden group border border-white/5 shadow-xl">
             <div className="absolute -top-20 -right-20 w-64 h-64 bg-indigo-600/30 rounded-full blur-[80px]"></div>
             <div className="relative z-10">
-              <div className="w-14 h-14 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center mb-8 border border-white/10">
-                <Sparkles className="w-7 h-7 text-indigo-400" />
+              <div className="w-11 h-11 bg-white/10 backdrop-blur-xl rounded-xl flex items-center justify-center mb-5 border border-white/10">
+                <Sparkles className="w-5 h-5 text-indigo-400" />
               </div>
-              <h3 className="text-2xl font-black tracking-tight mb-4">Stratégie IA</h3>
-              <p className="text-slate-400 text-sm font-medium leading-relaxed mb-10">
+              <h3 className="text-lg font-bold tracking-tight mb-2">Stratégie IA</h3>
+              <p className="text-inkmuted text-[13px] font-medium leading-relaxed mb-6">
                 Gemini analyse vos objectifs pour optimiser votre flux de production quotidien.
               </p>
 
               <button 
                 onClick={getAiInsight}
                 disabled={isAnalyzing}
-                className="w-full py-5 rounded-[1.25rem] ai-shimmer text-white font-black text-[13px] uppercase tracking-[0.2em] shadow-2xl shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                className="w-full py-3.5 rounded-xl ai-shimmer text-white font-semibold text-[12px] uppercase tracking-wide shadow-lg shadow-indigo-500/20 hover:brightness-110 active:scale-[0.99] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
               >
                 {/* Loader2 is used here */}
                 {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>Analyser Workspace</span>}
               </button>
 
               {aiInsight && (
-                <div className="mt-8 p-6 bg-white/5 rounded-3xl border border-white/10 animate-in slide-in-from-bottom-4 duration-500">
+                <div className="mt-8 p-6 bg-white/5 rounded-2xl border border-white/10 animate-in slide-in-from-bottom-4 duration-500">
                   <p className="text-sm italic text-slate-200 leading-relaxed font-medium">"{aiInsight}"</p>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="bg-white p-8 rounded-[2.5rem] premium-card flex flex-col gap-6">
+          <div className="bg-surface p-5 rounded-2xl premium-card flex flex-col gap-6">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                    <Zap className="w-6 h-6" />
+                <div className="w-10 h-10 rounded-xl bg-brandsoft flex items-center justify-center text-brand">
+                    <Zap className="w-5 h-5" />
                 </div>
                 <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Conseil Performance</p>
-                    <p className="text-sm font-bold text-slate-900 leading-tight">Priorisez le Deep Work ce matin.</p>
+                    <p className="text-[10px] font-bold text-inkmuted uppercase tracking-wide">Conseil Performance</p>
+                    <p className="text-sm font-bold text-ink leading-tight">Priorisez le Deep Work ce matin.</p>
                 </div>
               </div>
           </div>
@@ -189,16 +189,16 @@ const Dashboard: React.FC<DashboardProps> = ({ tasks, projects, onSelectTask, on
 const StatCard = ({ title, value, icon, color, label, onClick }: any) => (
   <div 
     onClick={onClick}
-    className="bg-white p-8 rounded-[2.5rem] premium-card cursor-pointer group flex items-center justify-between"
+    className="bg-surface p-5 rounded-2xl premium-card cursor-pointer group flex items-center justify-between"
   >
     <div>
-      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{title}</p>
+      <p className="text-[10px] font-bold text-inkmuted uppercase tracking-wide mb-2">{title}</p>
       <div className="flex items-baseline gap-2">
-        <span className="text-3xl font-black text-slate-900 tracking-tighter">{value}</span>
-        <span className="text-[11px] font-bold text-slate-400 uppercase">{label}</span>
+        <span className="text-2xl font-bold text-ink tracking-tight">{value}</span>
+        <span className="text-[11px] font-bold text-inkmuted uppercase">{label}</span>
       </div>
     </div>
-    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl shadow-current/5 group-hover:scale-110 transition-transform ${color}`}>
+    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform ${color}`}>
       {icon}
     </div>
   </div>

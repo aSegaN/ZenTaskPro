@@ -31,23 +31,24 @@ export const authService = {
      * Connexion utilisateur
      */
     async login(credentials: LoginCredentials): Promise<User> {
-        try {
-            const response = await api.post<LoginResponse>('/auth/login', credentials);
-            const { token, user, expiresAt } = response.data;
+        const response = await api.post<LoginResponse>('/auth/login', credentials);
+        const { token, user, expiresAt } = response.data as any;
 
-            // Stocker en localStorage
-            localStorage.setItem('token', token);
-            localStorage.setItem('user', JSON.stringify(user));
-            localStorage.setItem('expiresAt', expiresAt.toString());
-
-            console.log('✅ Login réussi, session expire à:', new Date(expiresAt).toLocaleTimeString());
-
-            return user;
-        } catch (error: any) {
-            console.error('❌ Erreur login:', error.response?.data?.message || error.message);
-            throw error;
+        if (!token || !user) {
+            throw new Error("Réponse /auth/login invalide (token/user manquant).");
         }
+
+        // fallback: si expiresAt n'est pas renvoyé par l'API
+        const safeExpiresAt =
+            typeof expiresAt === "number" ? expiresAt : Date.now() + 24 * 60 * 60 * 1000; // 24h par défaut
+
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('expiresAt', String(safeExpiresAt));
+
+        return user;
     },
+
 
     /**
      * Déconnexion utilisateur
@@ -143,7 +144,7 @@ export const authService = {
 
             console.log('🔄 Token rafraîchi, nouvelle expiration:', new Date(expiresAt).toLocaleTimeString());
             return true;
-        } catch (error) {
+        } catch {
             console.error('❌ Échec du rafraîchissement');
             return false;
         }

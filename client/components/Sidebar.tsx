@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Project, AppView, UserRole, User } from '../types';
-import { LayoutDashboard, CheckCircle, Calendar, Hash, Plus, Users, Settings, Trash2, Mail, Layers, Sparkles } from 'lucide-react';
+import { LayoutDashboard, CheckCircle, Calendar, Plus, Users, Settings, Trash2, Mail, Layers, Sparkles } from 'lucide-react';
 
 interface SidebarProps {
   currentView: AppView;
@@ -37,8 +36,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       onClick={onClick}
       className={`group relative flex items-center w-full px-5 py-3 my-1 rounded-2xl transition-all duration-300 ${
         isActive 
-        ? 'bg-slate-900 text-white shadow-xl shadow-slate-200/50 sidebar-active-glow' 
-        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+        ? 'bg-accent text-white shadow-xl shadow-slate-200/50 sidebar-active-glow' 
+        : 'text-inksoft hover:bg-surface2 hover:text-ink'
       }`}
     >
       <Icon className={`w-5 h-5 mr-4 transition-transform duration-300 ${isActive ? 'text-indigo-400' : 'group-hover:scale-110'}`} />
@@ -50,14 +49,14 @@ const Sidebar: React.FC<SidebarProps> = ({
   );
 
   return (
-    <aside className="w-[280px] border-r border-slate-200/40 bg-white h-screen flex flex-col fixed left-0 top-0 z-50">
+    <aside className="w-[280px] border-r border-line bg-surface h-screen flex flex-col fixed left-0 top-0 z-50">
       <div className="p-10 pb-6 flex items-center space-x-3">
-        <div className="w-11 h-11 bg-indigo-600 rounded-[1.2rem] flex items-center justify-center shadow-2xl shadow-indigo-200 rotate-6 group-hover:rotate-0 transition-all duration-500">
+        <div className="w-11 h-11 bg-indigo-600 rounded-xl flex items-center justify-center shadow-2xl shadow-indigo-200 rotate-6 group-hover:rotate-0 transition-all duration-500">
           <Layers className="text-white w-6 h-6" />
         </div>
         <div className="leading-none">
-          <span className="text-[22px] font-black text-slate-900 tracking-tighter">ZenTask</span>
-          <p className="text-[9px] font-black text-indigo-500 uppercase tracking-[0.3em] mt-1 ml-0.5">Workspace</p>
+          <span className="text-[22px] font-bold text-ink tracking-tighter">ZenTask</span>
+          <p className="text-[9px] font-bold text-brand uppercase tracking-wider mt-1 ml-0.5">Workspace</p>
         </div>
       </div>
 
@@ -69,10 +68,10 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         <div className="mt-12 mb-4 px-4 flex items-center justify-between">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Projets</h3>
+          <h3 className="text-[10px] font-bold text-inkmuted uppercase tracking-wider">Projets</h3>
           <button 
             onClick={onAddProject}
-            className="p-1.5 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+            className="p-1.5 text-inkmuted hover:text-brand hover:bg-brandsoft rounded-xl transition-all"
           >
             <Plus className="w-4 h-4" />
           </button>
@@ -81,31 +80,44 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div className="space-y-1">
           {projects.map((project) => (
             <div key={project.id} className="group relative">
-              <button
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={() => onSelectProject(project.id)}
-                className={`flex items-center w-full px-5 py-3 rounded-2xl transition-all duration-300 text-left ${
-                  currentView === 'project' && activeProjectId === project.id 
-                  ? 'bg-indigo-50/50 text-indigo-700 border border-indigo-100 shadow-sm shadow-indigo-50' 
-                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                onKeyDown={(e) => e.key === 'Enter' && onSelectProject(project.id)}
+                className={`flex items-center w-full px-5 py-3 rounded-2xl transition-all duration-300 text-left cursor-pointer ${
+                  activeProjectId === project.id
+                    ? 'bg-accent text-white shadow-xl shadow-slate-200/50 sidebar-active-glow'
+                    : 'text-inksoft hover:bg-surface2 hover:text-ink'
                 }`}
               >
-                <div className="w-2.5 h-2.5 rounded-full mr-4 flex-shrink-0 shadow-sm" style={{ backgroundColor: project.color }}></div>
-                <span className="text-[14px] font-bold truncate flex-1">{project.name}</span>
-                {currentUser.role === UserRole.ADMIN && (
-                   <button 
-                    onClick={(e) => { e.stopPropagation(); onDeleteProject(project.id); }}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-red-500 transition-all ml-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                <div 
+                  className="w-3 h-3 rounded-lg mr-4 ring-4 ring-opacity-20 transition-transform group-hover:scale-125" 
+                  style={{ 
+                    backgroundColor: project.color, 
+                    ringColor: project.color 
+                  }} 
+                />
+                <span className="text-[14px] font-bold tracking-tight flex-1 truncate">{project.name}</span>
+                {activeProjectId === project.id && (
+                  <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse mr-2"></div>
                 )}
-              </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteProject(project.id);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1 text-inkmuted hover:text-red-500 transition-all duration-200 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
 
         <div className="mt-12 mb-4 px-4">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Gestion</h3>
+          <h3 className="text-[10px] font-bold text-inkmuted uppercase tracking-wider">Gestion</h3>
         </div>
         <div className="space-y-1">
           <NavItem 
@@ -120,17 +132,17 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </nav>
 
-      <div className="p-8 border-t border-slate-100/60">
-        <div className="bg-slate-50 rounded-3xl p-4 mb-6 border border-slate-100 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-indigo-600" />
+      <div className="p-8 border-t border-linesoft">
+        <div className="bg-surface2 rounded-2xl p-4 mb-6 border border-linesoft flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-surface shadow-sm flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-brand" />
             </div>
             <div>
-                <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight leading-none mb-1">IA Assistant</p>
-                <p className="text-[9px] text-slate-500 font-bold">Actif sur le projet</p>
+                <p className="text-[11px] font-bold text-ink uppercase tracking-tight leading-none mb-1">IA Assistant</p>
+                <p className="text-[9px] text-inksoft font-bold">Actif sur le projet</p>
             </div>
         </div>
-        <button className="flex items-center space-x-3 w-full p-4 text-slate-500 hover:bg-slate-900 hover:text-white hover:shadow-2xl hover:shadow-slate-200 rounded-[1.5rem] transition-all group">
+        <button className="flex items-center space-x-3 w-full p-4 text-inksoft hover:bg-accent hover:text-white hover:shadow-2xl hover:shadow-slate-200 rounded-xl transition-all group">
           <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-700" />
           <span className="text-[14px] font-bold tracking-tight">Paramètres</span>
         </button>

@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Task, Status, Priority, Project } from '../types';
 import { PRIORITY_COLORS, STATUS_LABELS } from '../constants';
 import { ArrowLeft, Hash, Calendar as CalendarIcon, Ban } from 'lucide-react';
@@ -18,12 +18,12 @@ const TaskRow = React.memo(({ task, project, onSelectTask }: { task: Task, proje
   return (
     <tr 
       onClick={() => onSelectTask(task)}
-      className={`hover:bg-indigo-50/20 cursor-pointer transition-colors group h-[64px] ${isCancelled ? 'bg-gray-50/50 opacity-75' : ''}`}
+      className={`hover:bg-indigo-50/20 cursor-pointer transition-colors group h-[64px] ${isCancelled ? 'bg-surface2 opacity-75' : ''}`}
     >
       <td className="px-6 py-4">
         <div className="flex items-center gap-2">
           {isCancelled && <Ban className="w-3.5 h-3.5 text-red-400" />}
-          <span className={`font-semibold truncate transition-colors ${isCancelled ? 'text-gray-400 line-through' : 'text-gray-900 group-hover:text-indigo-600'}`}>
+          <span className={`font-semibold truncate transition-colors ${isCancelled ? 'text-inkmuted line-through' : 'text-ink group-hover:text-brand'}`}>
             {task.title}
           </span>
         </div>
@@ -31,7 +31,7 @@ const TaskRow = React.memo(({ task, project, onSelectTask }: { task: Task, proje
       <td className="px-6 py-4">
         <div className="flex items-center space-x-2">
           <Hash className="w-3.5 h-3.5" style={{ color: project?.color }} />
-          <span className="text-sm font-medium text-gray-600 truncate">{project?.name}</span>
+          <span className="text-sm font-medium text-inksoft truncate">{project?.name}</span>
         </div>
       </td>
       <td className="px-6 py-4">
@@ -40,18 +40,18 @@ const TaskRow = React.memo(({ task, project, onSelectTask }: { task: Task, proje
         </span>
       </td>
       <td className="px-6 py-4">
-        <div className="flex items-center space-x-2 text-sm font-medium text-gray-500">
+        <div className="flex items-center space-x-2 text-sm font-medium text-inksoft">
           <CalendarIcon className="w-3.5 h-3.5" />
-          <span className={new Date(task.dueDate) < new Date() && task.status !== Status.DONE && !isCancelled ? 'text-red-500 font-bold' : ''}>
+          <span className={new Date(task.dueDate) < new Date() && task.status !== Status.DONE && !isCancelled ? 'text-red-500 dark:text-red-400 font-bold' : ''}>
             {task.dueDate}
           </span>
         </div>
       </td>
       <td className="px-6 py-4 text-right">
         <span className={`text-xs font-bold px-2 py-1 rounded-lg inline-block min-w-[80px] text-center ${
-          task.status === Status.DONE ? 'bg-green-100 text-green-700' : 
-          task.status === Status.CANCELLED ? 'bg-red-100 text-red-700' :
-          'bg-gray-100 text-gray-500'
+          task.status === Status.DONE ? 'bg-green-100 text-green-700 dark:text-emerald-300' : 
+          task.status === Status.CANCELLED ? 'bg-red-100 text-red-700 dark:text-red-300' :
+          'bg-surface2 text-inksoft'
         }`}>
           {STATUS_LABELS[task.status]}
         </span>
@@ -101,36 +101,36 @@ const FilteredListView: React.FC<FilteredListViewProps> = ({ category, tasks, pr
       <div className="mb-8 flex items-center space-x-4 flex-shrink-0">
         <button 
           onClick={onBack}
-          className="p-2 hover:bg-white border border-transparent hover:border-gray-200 rounded-xl transition-all"
+          className="p-2 hover:bg-surface border border-transparent hover:border-line rounded-xl transition-all"
         >
-          <ArrowLeft className="w-6 h-6 text-gray-600" />
+          <ArrowLeft className="w-6 h-6 text-inksoft" />
         </button>
         <div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">{categoryTitles[category]}</h1>
-          <p className="text-gray-500 font-medium">{filteredTasks.length} tâches trouvées</p>
+          <h1 className="text-3xl font-bold text-ink tracking-tight">{categoryTitles[category]}</h1>
+          <p className="text-inksoft font-medium">{filteredTasks.length} tâches trouvées</p>
         </div>
       </div>
 
       <div 
         ref={containerRef}
         onScroll={onScroll}
-        className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-y-auto flex-1 relative"
+        className="bg-surface border border-line rounded-2xl shadow-sm overflow-y-auto flex-1 relative"
         style={{ maxHeight: 'calc(100vh - 250px)' }}
       >
         <table className="w-full text-left table-fixed">
           <thead className="sticky top-0 z-10">
-            <tr className="bg-gray-50 border-b border-gray-100">
-              <th className="w-2/5 px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Tâche</th>
-              <th className="w-1/5 px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Projet</th>
-              <th className="w-1/6 px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Priorité</th>
-              <th className="w-1/6 px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Échéance</th>
-              <th className="w-1/6 px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Statut</th>
+            <tr className="bg-surface2 border-b border-linesoft">
+              <th className="w-2/5 px-6 py-4 text-xs font-bold text-inkmuted uppercase tracking-wider">Tâche</th>
+              <th className="w-1/5 px-6 py-4 text-xs font-bold text-inkmuted uppercase tracking-wider">Projet</th>
+              <th className="w-1/6 px-6 py-4 text-xs font-bold text-inkmuted uppercase tracking-wider">Priorité</th>
+              <th className="w-1/6 px-6 py-4 text-xs font-bold text-inkmuted uppercase tracking-wider">Échéance</th>
+              <th className="w-1/6 px-6 py-4 text-xs font-bold text-inkmuted uppercase tracking-wider text-right">Statut</th>
             </tr>
           </thead>
           <tbody>
             {filteredTasks.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">Aucune tâche ne correspond à ce filtre.</td>
+                <td colSpan={5} className="px-6 py-12 text-center text-inkmuted italic">Aucune tâche ne correspond à ce filtre.</td>
               </tr>
             ) : (
               <>

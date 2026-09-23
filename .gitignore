@@ -88,3 +88,13 @@ Desktop.ini
 # =========================
 *.pem
 *.key
+
+# =========================
+# Base de données locale (Prisma/SQLite) — ne jamais committer
+# =========================
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+server/prisma/*.db
+server/prisma/dev.db

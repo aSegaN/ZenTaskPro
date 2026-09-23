@@ -27,15 +27,15 @@ const MyTasks: React.FC<MyTasksProps> = ({ currentUser, tasks, projects, onSelec
       {sections.map((section, idx) => (
         <div key={idx} className="space-y-4">
           <div className="flex items-center justify-between px-1">
-            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+            <h3 className="text-[10px] font-bold text-inkmuted uppercase tracking-wide">
               {section.title}
             </h3>
-            <span className="text-[10px] font-bold text-gray-300">{section.tasks.length}</span>
+            <span className="text-[10px] font-bold text-inkmuted">{section.tasks.length}</span>
           </div>
           
-          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden divide-y divide-gray-50">
+          <div className="bg-surface border border-line rounded-2xl shadow-sm overflow-hidden divide-y divide-linesoft">
             {section.tasks.length === 0 ? (
-              <div className="p-8 text-center text-gray-400 text-xs italic">Aucune tâche ici. Profitez-en pour souffler !</div>
+              <div className="p-8 text-center text-inkmuted text-xs italic">Aucune tâche ici. Profitez-en pour souffler !</div>
             ) : (
               section.tasks.map(task => {
                 const project = projects.find(p => p.id === task.projectId);
@@ -50,28 +50,28 @@ const MyTasks: React.FC<MyTasksProps> = ({ currentUser, tasks, projects, onSelec
                         e.stopPropagation();
                         onUpdateTask({ ...task, status: task.status === Status.DONE ? Status.TODO : Status.DONE });
                       }}
-                      className={`mr-4 transition-all transform hover:scale-110 ${task.status === Status.DONE ? 'text-green-500' : 'text-gray-200 hover:text-indigo-400'}`}
+                      className={`mr-4 transition-all transform hover:scale-110 ${task.status === Status.DONE ? 'text-green-500' : 'text-inkmuted hover:text-indigo-400'}`}
                     >
                       {task.status === Status.DONE ? <CheckCircle2 className="w-6 h-6" /> : <Circle className="w-6 h-6" />}
                     </button>
                     
                     <div className="flex-1 min-w-0">
-                      <h4 className={`font-bold text-sm truncate ${task.status === Status.DONE ? 'text-gray-300 line-through' : 'text-gray-900'}`}>
+                      <h4 className={`font-bold text-sm truncate ${task.status === Status.DONE ? 'text-inkmuted line-through' : 'text-ink'}`}>
                         {task.title}
                       </h4>
                       <div className="flex items-center space-x-3 mt-1">
-                        <div className="flex items-center space-x-1 text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
+                        <div className="flex items-center space-x-1 text-[10px] text-inkmuted font-bold uppercase tracking-tighter">
                           <Hash className="w-2.5 h-2.5" style={{ color: project?.color }} />
                           <span>{project?.name}</span>
                         </div>
-                        <div className="flex items-center space-x-1 text-[10px] text-gray-400">
+                        <div className="flex items-center space-x-1 text-[10px] text-inkmuted">
                           <CalendarIcon className="w-2.5 h-2.5" />
                           <span>{task.dueDate}</span>
                         </div>
                       </div>
                     </div>
 
-                    <span className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-wider ${PRIORITY_COLORS[task.priority]}`}>
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${PRIORITY_COLORS[task.priority]}`}>
                       {task.priority}
                     </span>
                   </div>

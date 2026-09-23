@@ -5,7 +5,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 // ============================================
 
 // Utiliser une constante simple pour éviter les problèmes de typage
-const API_BASE_URL = 'http://localhost:4000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 const IS_DEV = process.env.NODE_ENV !== 'production';
 
 // Créer l'instance Axios

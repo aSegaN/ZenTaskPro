@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { Trash2 as Trash } from 'lucide-react';
 /**
  * FIX: Button imbriqué dans Sidebar
  * 
@@ -29,7 +31,7 @@ const ProjectItemBefore = ({ project, onSelect, onDelete }) => (
                 e.stopPropagation();
                 onDelete(project.id);
             }}
-            className="p-1 text-red-500"
+            className="p-1 text-red-500 dark:text-red-400"
         >
             <Trash className="w-4 h-4" />
         </button>
@@ -51,7 +53,7 @@ const ProjectItemAfter1 = ({ project, onSelect, onDelete }) => (
                 e.stopPropagation();
                 onDelete(project.id);
             }}
-            className="opacity-0 group-hover:opacity-100 p-1 text-red-500"
+            className="opacity-0 group-hover:opacity-100 p-1 text-red-500 dark:text-red-400"
         >
             <Trash className="w-4 h-4" />
         </button>
@@ -69,7 +71,7 @@ const ProjectItemAfter2 = ({ project, onSelect, onDelete }) => (
         </button>
         <button
             onClick={() => onDelete(project.id)}
-            className="opacity-0 group-hover:opacity-100 p-2 rounded-r-2xl text-red-500"
+            className="opacity-0 group-hover:opacity-100 p-2 rounded-r-2xl text-red-500 dark:text-red-400"
         >
             <Trash className="w-4 h-4" />
         </button>

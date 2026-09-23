@@ -45,7 +45,7 @@ const FileIcon: React.FC<{ type: string; className?: string }> = ({ type, classN
         case 'archive':
             return <Archive className={`${className} text-purple-500`} />;
         default:
-            return <File className={`${className} text-slate-500`} />;
+            return <File className={`${className} text-inksoft`} />;
     }
 };
 
@@ -102,7 +102,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
     return (
         <div className="space-y-3">
             {/* Label */}
-            <label className="block text-sm font-medium text-slate-300">
+            <label className="block text-sm font-medium text-inkmuted">
                 {label} ({totalFiles}/{maxFiles})
             </label>
 
@@ -116,8 +116,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
                         border-2 border-dashed rounded-xl p-4 text-center cursor-pointer
                         transition-all duration-200
                         ${disabled 
-                            ? 'border-slate-700 bg-slate-800/30 cursor-not-allowed' 
-                            : 'border-slate-600 hover:border-indigo-500 hover:bg-slate-800/50'
+                            ? 'border-line bg-surface2 cursor-not-allowed' 
+                            : 'border-line hover:border-indigo-500 hover:bg-surface2'
                         }
                     `}
                 >
@@ -132,17 +132,17 @@ const FileUpload: React.FC<FileUploadProps> = ({
                     />
                     
                     {isUploading ? (
-                        <div className="flex flex-col items-center gap-2 text-slate-400">
-                            <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                        <div className="flex flex-col items-center gap-2 text-inkmuted">
+                            <Loader2 className="w-8 h-8 animate-spin text-brand" />
                             <span>Upload en cours...</span>
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center gap-2 text-slate-400">
+                        <div className="flex flex-col items-center gap-2 text-inkmuted">
                             <Upload className="w-8 h-8" />
                             <span className="text-sm">
                                 Cliquez ou glissez des fichiers ici
                             </span>
-                            <span className="text-xs text-slate-500">
+                            <span className="text-xs text-inksoft">
                                 Max {maxFiles} fichiers, 10MB chacun
                             </span>
                         </div>
@@ -165,7 +165,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
                     {existingAttachments.map((att) => (
                         <div
                             key={att.id}
-                            className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg group"
+                            className="flex items-center gap-3 p-3 bg-surface2 rounded-lg group"
                         >
                             {/* Preview image ou icône */}
                             {att.type === 'image' ? (
@@ -175,15 +175,15 @@ const FileUpload: React.FC<FileUploadProps> = ({
                                     className="w-10 h-10 object-cover rounded"
                                 />
                             ) : (
-                                <div className="w-10 h-10 flex items-center justify-center bg-slate-700 rounded">
+                                <div className="w-10 h-10 flex items-center justify-center bg-surface2 rounded">
                                     <FileIcon type={att.type} />
                                 </div>
                             )}
 
                             {/* Infos */}
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm text-slate-200 truncate">{att.name}</p>
-                                <p className="text-xs text-slate-500">
+                                <p className="text-sm text-inksoft truncate">{att.name}</p>
+                                <p className="text-xs text-inksoft">
                                     {formatFileSize(att.size)}
                                     {isBlobUrl(att.url) && (
                                         <span className="ml-2 text-amber-500">(non sauvegardé)</span>
@@ -195,7 +195,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
                             {onRemoveExisting && (
                                 <button
                                     onClick={() => onRemoveExisting(att)}
-                                    className="p-1 text-slate-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                    className="p-1 text-inksoft hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
                                     title="Supprimer"
                                 >
                                     <X className="w-4 h-4" />
@@ -218,14 +218,14 @@ const FileUpload: React.FC<FileUploadProps> = ({
                                     className="w-10 h-10 object-cover rounded"
                                 />
                             ) : (
-                                <div className="w-10 h-10 flex items-center justify-center bg-slate-700 rounded">
+                                <div className="w-10 h-10 flex items-center justify-center bg-surface2 rounded">
                                     <FileIcon type={getFileTypeFromName(pf.file.name)} />
                                 </div>
                             )}
 
                             {/* Infos */}
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm text-slate-200 truncate">{pf.file.name}</p>
+                                <p className="text-sm text-inksoft truncate">{pf.file.name}</p>
                                 <p className="text-xs text-indigo-400">
                                     {formatFileSize(pf.file.size)} • En attente d'upload
                                 </p>
@@ -235,7 +235,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
                             {onRemovePending && (
                                 <button
                                     onClick={() => onRemovePending(pf.id)}
-                                    className="p-1 text-slate-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                    className="p-1 text-inksoft hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
                                     title="Retirer"
                                 >
                                     <X className="w-4 h-4" />

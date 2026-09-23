@@ -7,10 +7,10 @@ import Dashboard, { FilterCategory } from './components/Dashboard';
 import MyTasks from './components/MyTasks';
 import Login from './components/Login';
 import { authService } from './services/authService';
-import { emailService } from './services/emailService';
 import api from './services/api';
 import { Task, Status, Priority, Project, Notification, AppView, User, UserRole, EmailLog, SubTask } from './types';
 import { STATUS_LABELS } from './constants';
+import { useTheme } from './hooks/useTheme';
 import { Plus, X, Check, Calendar, User as UserIcon, Tag, Briefcase, ListChecks, Trash2 } from 'lucide-react';
 
 const CalendarView = lazy(() => import('./components/CalendarView'));
@@ -27,12 +27,12 @@ const TOKEN_REFRESH_INTERVAL = 5 * 60 * 1000; // Vérifier toutes les 5 minutes
 const TOKEN_REFRESH_THRESHOLD = 10 * 60 * 1000; // Rafraîchir si moins de 10 min restantes
 
 const ViewLoader = () => (
-  <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400">
+  <div className="flex flex-col items-center justify-center h-[60vh] text-inkmuted">
     <div className="relative">
-      <div className="w-12 h-12 border-4 border-slate-100 rounded-full"></div>
+      <div className="w-12 h-12 border-4 border-linesoft rounded-full"></div>
       <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
     </div>
-    <p className="font-bold text-[11px] uppercase tracking-[0.3em] text-indigo-500 mt-6">Synchronisation...</p>
+    <p className="font-bold text-[11px] uppercase tracking-wider text-brand mt-6">Synchronisation...</p>
   </div>
 );
 
@@ -50,10 +50,12 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
   const [activeProjectId, setActiveProjectId] = useState<string>('');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
+  const [emailLogs] = useState<EmailLog[]>([]);
   const [dashboardFilter, setDashboardFilter] = useState<FilterCategory>('all');
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
+
+  const { theme, toggleTheme } = useTheme();
 
   // ============================================
   // GESTION DES NOTIFICATIONS
@@ -259,7 +261,7 @@ const App: React.FC = () => {
       setTasks(prev => prev.filter(t => t.id !== id));
       setSelectedTask(null);
       addNotification('Tâche supprimée', 'L\'élément a été retiré de la base de données.', 'info');
-    } catch (e) {
+    } catch {
       addNotification('Erreur', 'Impossible de supprimer la tâche.', 'warning');
     }
   };
@@ -279,7 +281,7 @@ const App: React.FC = () => {
       setActiveProjectId(newProject.id);
       setCurrentView('project');
       addNotification('Nouveau Projet', `Workspace "${name}" créé.`, 'success');
-    } catch (error) {
+    } catch {
       addNotification('Erreur', "Impossible de sauvegarder le projet.", 'warning');
     }
   };
@@ -292,7 +294,7 @@ const App: React.FC = () => {
         setTasks(prev => prev.filter(t => t.projectId !== id));
         if (activeProjectId === id) setCurrentView('dashboard');
         addNotification('Projet supprimé', 'Le workspace a été effacé.', 'info');
-      } catch (error) {
+      } catch {
         addNotification('Erreur', "Impossible de supprimer le projet.", 'warning');
       }
     }
@@ -357,7 +359,7 @@ const App: React.FC = () => {
   if (!currentUser) return <Login onLogin={handleLogin} />;
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex min-h-screen bg-canvas">
       <Sidebar
         currentView={currentView}
         activeProjectId={currentView === 'project' ? activeProjectId : ''}
@@ -373,28 +375,30 @@ const App: React.FC = () => {
         onGoToEmailLogs={() => setCurrentView('email-logs')}
       />
 
-      <main className="flex-1 ml-[280px] flex flex-col h-screen overflow-hidden bg-slate-50/30">
+      <main className="flex-1 ml-[280px] flex flex-col h-screen overflow-hidden bg-canvas">
         <Header
           currentUser={currentUser}
           notifications={notifications}
           onMarkRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))}
           onMarkAllRead={() => setNotifications([])}
           onLogout={handleLogout}
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
 
-        <div className="p-10 flex-1 overflow-y-auto custom-scrollbar">
+        <div className="p-8 flex-1 overflow-y-auto custom-scrollbar">
           <Suspense fallback={<ViewLoader />}>
             {currentView === 'dashboard' && (
               <div className="max-w-7xl mx-auto">
-                <header className="mb-10 flex justify-between items-end">
+                <header className="mb-8 flex justify-between items-end">
                   <div>
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-none mb-3">
-                      Dashboard <span className="text-indigo-600">.</span>
+                    <h1 className="text-2xl font-bold text-ink tracking-tight leading-none mb-2">
+                      Dashboard <span className="text-brand">.</span>
                     </h1>
-                    <p className="text-slate-500 font-medium text-[15px]">Aperçu stratégique de votre performance.</p>
+                    <p className="text-inksoft font-medium text-sm">Aperçu stratégique de votre performance.</p>
                   </div>
-                  <button onClick={() => setShowTaskModal(true)} className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[13px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-slate-200 flex items-center gap-2">
-                    <Plus className="w-4 h-4" /> Nouvelle Tâche
+                  <button onClick={() => setShowTaskModal(true)} className="bg-accent text-white px-5 py-2.5 rounded-xl font-semibold text-[13px] hover:opacity-90 transition-all shadow-sm flex items-center gap-2">
+                    <Plus className="w-4 h-4" /> Nouvelle tâche
                   </button>
                 </header>
                 <Dashboard
@@ -409,15 +413,15 @@ const App: React.FC = () => {
 
             {currentView === 'project' && activeProject && (
               <div className="h-full flex flex-col max-w-7xl mx-auto">
-                <header className="mb-10 flex items-center justify-between">
+                <header className="mb-8 flex items-center justify-between">
                   <div className="flex items-center space-x-5">
-                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-indigo-100" style={{ backgroundColor: activeProject.color }}>{activeProject.name.charAt(0)}</div>
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm" style={{ backgroundColor: activeProject.color }}>{activeProject.name.charAt(0)}</div>
                     <div>
-                      <h1 className="text-3xl font-black text-slate-900 tracking-tight">{activeProject.name}</h1>
-                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1">Projet ID: {activeProject.id}</p>
+                      <h1 className="text-2xl font-bold text-ink tracking-tight">{activeProject.name}</h1>
+                      <p className="text-[10px] text-inkmuted font-bold uppercase tracking-wide mt-1">Projet ID: {activeProject.id}</p>
                     </div>
                   </div>
-                  <button onClick={() => setShowTaskModal(true)} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[13px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-indigo-100 flex items-center gap-2">
+                  <button onClick={() => setShowTaskModal(true)} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-semibold text-[13px] hover:opacity-90 transition-all shadow-sm flex items-center gap-2">
                     <Plus className="w-4 h-4" /> Tâche
                   </button>
                 </header>
@@ -425,10 +429,10 @@ const App: React.FC = () => {
                   {Object.values(Status).map((status) => (
                     <div key={status} className="w-[320px] flex-shrink-0 flex flex-col">
                       <div className="flex items-center justify-between px-2 mb-6">
-                        <h3 className="font-black text-[11px] text-slate-400 uppercase tracking-[0.25em]">
+                        <h3 className="font-bold text-[11px] text-inkmuted uppercase tracking-wider">
                           {STATUS_LABELS[status]}
                         </h3>
-                        <span className="bg-white border border-slate-200 text-slate-500 text-[10px] font-black px-2 py-0.5 rounded-lg shadow-sm">
+                        <span className="bg-surface border border-line text-inksoft text-[10px] font-bold px-2 py-0.5 rounded-lg shadow-sm">
                           {filteredTasksForProject.filter(t => t.status === status).length}
                         </span>
                       </div>
@@ -529,19 +533,19 @@ const TaskCreateModal = ({ projects, users, currentUser, initialProjectId, onClo
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4 animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="p-10 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+      <div className="bg-surface w-full max-w-2xl rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="p-10 border-b border-linesoft flex justify-between items-center bg-surface2">
           <div>
-            <h3 className="text-2xl font-black text-slate-900">Nouvelle Tâche</h3>
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Conception de workflow</p>
+            <h3 className="text-2xl font-bold text-ink">Nouvelle Tâche</h3>
+            <p className="text-xs text-inkmuted font-bold uppercase tracking-wide mt-1">Conception de workflow</p>
           </div>
-          <button onClick={onClose} className="p-3 hover:bg-white rounded-2xl transition-all shadow-sm"><X className="w-5 h-5 text-slate-400" /></button>
+          <button onClick={onClose} className="p-3 hover:bg-surface rounded-2xl transition-all shadow-sm"><X className="w-5 h-5 text-inkmuted" /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-10 space-y-8 overflow-y-auto custom-scrollbar flex-1">
           <div className="space-y-6">
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Titre de l'action</label>
+              <label className="block text-[10px] font-bold text-inkmuted uppercase tracking-wide mb-3">Titre de l'action</label>
               <input
                 autoFocus
                 required
@@ -549,29 +553,29 @@ const TaskCreateModal = ({ projects, users, currentUser, initialProjectId, onClo
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="ex: Rédaction du cahier des charges"
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-[15px] font-bold focus:ring-8 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all"
+                className="w-full bg-surface2 border border-line rounded-2xl p-4 text-[15px] font-bold focus:ring-8 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Description détaillée</label>
+              <label className="block text-[10px] font-bold text-inkmuted uppercase tracking-wide mb-3">Description détaillée</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Précisez les objectifs et contraintes..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-medium focus:ring-8 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all min-h-[100px] resize-none"
+                className="w-full bg-surface2 border border-line rounded-2xl p-4 text-sm font-medium focus:ring-8 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all min-h-[100px] resize-none"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Workspace</label>
+                <label className="block text-[10px] font-bold text-inkmuted uppercase tracking-wide mb-3">Workspace</label>
                 <div className="relative">
-                  <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-inkmuted" />
                   <select
                     value={projectId}
                     onChange={(e) => setProjectId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 pl-12 text-[13px] font-bold appearance-none outline-none focus:border-indigo-500 transition-all cursor-pointer"
+                    className="w-full bg-surface2 border border-line rounded-2xl p-4 pl-12 text-[13px] font-bold appearance-none outline-none focus:border-indigo-500 transition-all cursor-pointer"
                   >
                     {projects.map((p: Project) => (
                       <option key={p.id} value={p.id}>{p.name}</option>
@@ -580,13 +584,13 @@ const TaskCreateModal = ({ projects, users, currentUser, initialProjectId, onClo
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Responsable</label>
+                <label className="block text-[10px] font-bold text-inkmuted uppercase tracking-wide mb-3">Responsable</label>
                 <div className="relative">
-                  <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-inkmuted" />
                   <select
                     value={assigneeId}
                     onChange={(e) => setAssigneeId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 pl-12 text-[13px] font-bold appearance-none outline-none focus:border-indigo-500 transition-all cursor-pointer"
+                    className="w-full bg-surface2 border border-line rounded-2xl p-4 pl-12 text-[13px] font-bold appearance-none outline-none focus:border-indigo-500 transition-all cursor-pointer"
                   >
                     {users.map((u: User) => (
                       <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
@@ -598,13 +602,13 @@ const TaskCreateModal = ({ projects, users, currentUser, initialProjectId, onClo
 
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Criticité</label>
+                <label className="block text-[10px] font-bold text-inkmuted uppercase tracking-wide mb-3">Criticité</label>
                 <div className="relative">
-                  <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-inkmuted" />
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value as Priority)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 pl-12 text-[13px] font-bold appearance-none outline-none focus:border-indigo-500 transition-all cursor-pointer"
+                    className="w-full bg-surface2 border border-line rounded-2xl p-4 pl-12 text-[13px] font-bold appearance-none outline-none focus:border-indigo-500 transition-all cursor-pointer"
                   >
                     {Object.values(Priority).map(p => (
                       <option key={p} value={p}>{p}</option>
@@ -613,14 +617,14 @@ const TaskCreateModal = ({ projects, users, currentUser, initialProjectId, onClo
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Deadline</label>
+                <label className="block text-[10px] font-bold text-inkmuted uppercase tracking-wide mb-3">Deadline</label>
                 <div className="relative">
-                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-inkmuted pointer-events-none" />
                   <input
                     type="date"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 pl-12 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                    className="w-full bg-surface2 border border-line rounded-2xl p-4 pl-12 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
                   />
                 </div>
               </div>
@@ -628,23 +632,23 @@ const TaskCreateModal = ({ projects, users, currentUser, initialProjectId, onClo
           </div>
 
           {/* Subtasks Section */}
-          <div className="pt-6 border-t border-slate-100">
+          <div className="pt-6 border-t border-linesoft">
             <div className="flex items-center gap-3 mb-6">
-              <ListChecks className="w-5 h-5 text-indigo-500" />
-              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Étapes de réalisation ({subtasks.length})</h4>
+              <ListChecks className="w-5 h-5 text-brand" />
+              <h4 className="text-[10px] font-bold text-inkmuted uppercase tracking-wide">Étapes de réalisation ({subtasks.length})</h4>
             </div>
 
             <div className="space-y-3 mb-6">
               {subtasks.map((st: any) => (
-                <div key={st.id} className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-2xl shadow-sm group animate-in slide-in-from-left-2">
+                <div key={st.id} className="flex items-center justify-between p-4 bg-surface border border-line rounded-2xl shadow-sm group animate-in slide-in-from-left-2">
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
-                    <span className="text-sm font-bold text-slate-700">{st.title}</span>
+                    <span className="text-sm font-bold text-inksoft">{st.title}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => removeSubtask(st.id)}
-                    className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                    className="p-1.5 text-inkmuted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -659,12 +663,12 @@ const TaskCreateModal = ({ projects, users, currentUser, initialProjectId, onClo
                 onChange={(e) => setNewSubtaskTitle(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSubtask(); } }}
                 placeholder="Nouvelle sous-tâche..."
-                className="flex-1 bg-white border border-slate-200 rounded-2xl px-5 py-3.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all shadow-sm"
+                className="flex-1 bg-surface border border-line rounded-2xl px-5 py-3.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all shadow-sm"
               />
               <button
                 type="button"
                 onClick={addSubtask}
-                className="px-5 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all font-black text-xs uppercase tracking-widest shadow-lg shadow-slate-200 active:scale-95"
+                className="px-5 bg-accent text-white rounded-2xl hover:opacity-90 transition-all font-bold text-xs uppercase tracking-wide shadow-lg shadow-slate-200 active:scale-95"
               >
                 Ajouter
               </button>
@@ -672,17 +676,17 @@ const TaskCreateModal = ({ projects, users, currentUser, initialProjectId, onClo
           </div>
         </form>
 
-        <div className="p-8 border-t border-slate-100 bg-slate-50/50 flex gap-4">
+        <div className="p-8 border-t border-linesoft bg-surface2 flex gap-4">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-8 py-4 bg-white border border-slate-200 text-slate-400 font-black text-[11px] rounded-2xl hover:bg-slate-50 transition-all uppercase tracking-widest"
+            className="flex-1 px-8 py-4 bg-surface border border-line text-inkmuted font-bold text-[11px] rounded-2xl hover:bg-surface2 transition-all uppercase tracking-wide"
           >
             Annuler
           </button>
           <button
             onClick={handleSubmit}
-            className="flex-[2] bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-2xl shadow-indigo-100 flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest text-[11px]"
+            className="flex-[2] bg-indigo-600 text-white font-bold py-4 rounded-2xl shadow-2xl shadow-indigo-100 flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-wide text-[11px]"
           >
             <Check className="w-5 h-5" /> Confirmer la création
           </button>
@@ -702,34 +706,34 @@ const ProjectCreateModal = ({ onClose, onSubmit }: any) => {
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4 animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl animate-in zoom-in-95 duration-200">
+      <div className="bg-surface w-full max-w-md rounded-2xl p-10 shadow-2xl animate-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h3 className="text-2xl font-black text-slate-900">Nouveau Projet</h3>
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Espace de travail</p>
+            <h3 className="text-2xl font-bold text-ink">Nouveau Projet</h3>
+            <p className="text-xs text-inkmuted font-bold uppercase tracking-wide mt-1">Espace de travail</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-all"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="p-2 hover:bg-surface2 rounded-full transition-all"><X className="w-5 h-5" /></button>
         </div>
         <div className="space-y-6">
           <div>
-            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Nom du Workspace</label>
+            <label className="block text-[10px] font-bold text-inkmuted uppercase tracking-wide mb-3">Nom du Workspace</label>
             <input
               autoFocus
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="ex: Design Sprint 2024"
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all"
+              className="w-full bg-surface2 border border-line rounded-2xl p-4 text-sm font-bold focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all"
             />
           </div>
           <div>
-            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Identité visuelle</label>
+            <label className="block text-[10px] font-bold text-inkmuted uppercase tracking-wide mb-3">Identité visuelle</label>
             <div className="flex gap-3">
               {colors.map(c => (
                 <button
                   key={c}
                   onClick={() => setColor(c)}
-                  className={`w-8 h-8 rounded-full border-4 transition-all ${color === c ? 'border-slate-900 scale-125' : 'border-transparent opacity-50 hover:opacity-100'}`}
+                  className={`w-8 h-8 rounded-full border-4 transition-all ${color === c ? 'border-ink scale-125' : 'border-transparent opacity-50 hover:opacity-100'}`}
                   style={{ backgroundColor: c }}
                 />
               ))}
@@ -737,7 +741,7 @@ const ProjectCreateModal = ({ onClose, onSubmit }: any) => {
           </div>
           <button
             onClick={() => { if (name.trim()) { onSubmit(name, color); onClose(); } }}
-            className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all mt-4"
+            className="w-full bg-accent text-white font-bold py-4 rounded-2xl shadow-xl flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all mt-4"
           >
             <Check className="w-5 h-5" /> Créer le projet
           </button>

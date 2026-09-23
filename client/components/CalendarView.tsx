@@ -9,7 +9,7 @@ interface CalendarViewProps {
   onSelectTask: (task: Task) => void;
 }
 
-const CalendarView: React.FC<CalendarViewProps> = ({ tasks, projects, onSelectTask }) => {
+const CalendarView: React.FC<CalendarViewProps> = ({ tasks, onSelectTask }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
@@ -43,25 +43,25 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, projects, onSelectTa
   const weekDays = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden animate-in fade-in duration-500">
-      <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-        <h2 className="text-xl font-black text-gray-900 capitalize">{monthName}</h2>
+    <div className="bg-surface border border-line rounded-2xl shadow-sm overflow-hidden animate-in fade-in duration-500">
+      <div className="p-6 border-b border-linesoft flex items-center justify-between bg-surface2">
+        <h2 className="text-xl font-bold text-ink capitalize">{monthName}</h2>
         <div className="flex items-center space-x-2">
-          <button onClick={prevMonth} className="p-2 hover:bg-white border border-transparent hover:border-gray-200 rounded-xl transition-all">
-            <ChevronLeft className="w-5 h-5 text-gray-600" />
+          <button onClick={prevMonth} className="p-2 hover:bg-surface border border-transparent hover:border-line rounded-xl transition-all">
+            <ChevronLeft className="w-5 h-5 text-inksoft" />
           </button>
-          <button onClick={() => setCurrentDate(new Date())} className="px-4 py-2 text-sm font-bold text-gray-600 hover:bg-white border border-transparent hover:border-gray-200 rounded-xl transition-all">
+          <button onClick={() => setCurrentDate(new Date())} className="px-4 py-2 text-sm font-bold text-inksoft hover:bg-surface border border-transparent hover:border-line rounded-xl transition-all">
             Aujourd'hui
           </button>
-          <button onClick={nextMonth} className="p-2 hover:bg-white border border-transparent hover:border-gray-200 rounded-xl transition-all">
-            <ChevronRight className="w-5 h-5 text-gray-600" />
+          <button onClick={nextMonth} className="p-2 hover:bg-surface border border-transparent hover:border-line rounded-xl transition-all">
+            <ChevronRight className="w-5 h-5 text-inksoft" />
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-7 border-b border-gray-100">
+      <div className="grid grid-cols-7 border-b border-linesoft">
         {weekDays.map(d => (
-          <div key={d} className="py-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest border-r last:border-0 border-gray-100">
+          <div key={d} className="py-3 text-center text-[10px] font-bold text-inkmuted uppercase tracking-wide border-r last:border-0 border-linesoft">
             {d}
           </div>
         ))}
@@ -71,7 +71,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, projects, onSelectTa
         {days.map((day, idx) => (
           <div 
             key={idx} 
-            className={`border-r border-b border-gray-50 p-2 overflow-y-auto last:border-r-0 ${day === null ? 'bg-gray-50/30' : 'bg-white'}`}
+            className={`border-r border-b border-linesoft p-2 overflow-y-auto last:border-r-0 ${day === null ? 'bg-surface2' : 'bg-surface'}`}
           >
             {day && (
               <>
@@ -79,22 +79,21 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, projects, onSelectTa
                   <span className={`text-xs font-bold ${
                     day === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear()
                     ? 'w-6 h-6 flex items-center justify-center bg-indigo-600 text-white rounded-full'
-                    : 'text-gray-400'
+                    : 'text-inkmuted'
                   }`}>
                     {day}
                   </span>
                 </div>
                 <div className="space-y-1">
                   {getTasksForDay(day).map(task => {
-                    const project = projects.find(p => p.id === task.projectId);
                     return (
                       <div 
                         key={task.id}
                         onClick={() => onSelectTask(task)}
                         className={`px-2 py-1 rounded text-[9px] font-bold truncate cursor-pointer transition-all hover:brightness-95 border-l-2 shadow-sm ${
-                          task.priority === Priority.URGENT ? 'bg-red-50 text-red-700 border-red-500' : 
+                          task.priority === Priority.URGENT ? 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 border-red-500' : 
                           task.priority === Priority.HIGH ? 'bg-orange-50 text-orange-700 border-orange-500' :
-                          'bg-indigo-50 text-indigo-700 border-indigo-500'
+                          'bg-brandsoft text-indigo-700 border-indigo-500'
                         }`}
                         title={task.title}
                       >

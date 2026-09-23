@@ -1,5 +1,5 @@
 
-import { Task, User, EmailLog, Status, Priority } from '../types';
+import { Task, User, EmailLog, Status } from '../types';
 
 export const emailService = {
   generateTaskCreatedEmail: (task: Task): Omit<EmailLog, 'id' | 'sentAt' | 'status'> => {

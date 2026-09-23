@@ -1,125 +1,141 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt, { SignOptions, Secret } from 'jsonwebtoken';
-
-// ============================================
-// TYPES
-// ============================================
-
-export interface JwtPayload {
-    userId: string;
-    role: 'ADMIN' | 'MANAGER' | 'CONTRIBUTOR';
-    iat: number;  // Issued at
-    exp: number;  // Expiration
-}
-
-// Extension du type Request pour inclure l'utilisateur authentifié
-export interface AuthenticatedRequest extends Request {
-    user?: JwtPayload;
-}
+import jwt from 'jsonwebtoken';
 
 // ============================================
 // CONFIGURATION
 // ============================================
 
-const getSecretKey = (): Secret => {
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-        console.error('⚠️ JWT_SECRET non défini! Utilisation de la clé par défaut (DANGER en prod)');
-        return 'zentask_secret_key_change_me';
-    }
-    return secret;
-};
+const JWT_SECRET = process.env.JWT_SECRET || 'zentask-secret-change-in-production';
+const JWT_EXPIRES_IN = parseInt(process.env.JWT_EXPIRES_IN || '7200'); // 2 heures
+
+/** Timestamp (ms) d'expiration d'une nouvelle session. */
+export const getSessionExpiry = (): number => Date.now() + JWT_EXPIRES_IN * 1000;
 
 // ============================================
-// MIDDLEWARE PRINCIPAL
+// TYPES
+// ============================================
+
+export interface TokenPayload {
+    userId: string;
+    role: string;
+    iat?: number;
+    exp?: number;
+}
+
+export interface AuthenticatedRequest extends Request {
+    user?: TokenPayload;
+}
+
+// ============================================
+// HELPERS
 // ============================================
 
 /**
- * Middleware d'authentification JWT
- * Vérifie la présence et la validité du token dans le header Authorization
+ * Générer un token JWT
  */
-export const authenticate = (
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction
-): void => {
+export const generateToken = (userId: string, role: string, expiresIn: number = JWT_EXPIRES_IN): string => {
+    return jwt.sign(
+        { userId, role },
+        JWT_SECRET,
+        { expiresIn }
+    );
+};
+
+/**
+ * Vérifier et décoder un token
+ */
+export const verifyToken = (token: string): TokenPayload => {
+    return jwt.verify(token, JWT_SECRET) as TokenPayload;
+};
+
+// ============================================
+// MIDDLEWARES
+// ============================================
+
+/**
+ * Middleware d'authentification - Vérifie le token JWT
+ */
+export const authenticate = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        res.status(401).json({
+            error: 'Token manquant',
+            code: 'MISSING_TOKEN'
+        });
+        return;
+    }
+
+    const token = authHeader.split(' ')[1];
+
     try {
-        // 1. Extraire le header Authorization
-        const authHeader = req.headers.authorization;
-
-        if (!authHeader) {
-            res.status(401).json({
-                error: 'Token manquant',
-                code: 'NO_TOKEN',
-                message: 'Le header Authorization est requis'
-            });
-            return;
-        }
-
-        // 2. Vérifier le format "Bearer <token>"
-        const parts = authHeader.split(' ');
-
-        if (parts.length !== 2 || parts[0] !== 'Bearer') {
-            res.status(401).json({
-                error: 'Format de token invalide',
-                code: 'INVALID_FORMAT',
-                message: 'Le format attendu est: Bearer <token>'
-            });
-            return;
-        }
-
-        const token = parts[1];
-
-        // 3. Vérifier et décoder le token
-        const decoded = jwt.verify(token, getSecretKey()) as JwtPayload;
-
-        // 4. Vérifier l'expiration (jwt.verify le fait déjà, mais on ajoute un log)
-        const now = Math.floor(Date.now() / 1000);
-        const timeRemaining = decoded.exp - now;
-
-        if (timeRemaining < 300) { // Moins de 5 minutes restantes
-            console.log(`⏰ Token expire bientôt pour user ${decoded.userId} (${timeRemaining}s restantes)`);
-        }
-
-        // 5. Attacher l'utilisateur à la requête
+        const decoded = verifyToken(token);
         req.user = decoded;
-
-        // 6. Log de debug (à désactiver en prod)
-        if (process.env.NODE_ENV !== 'production') {
-            console.log(`🔐 Auth OK: ${decoded.userId} (${decoded.role})`);
-        }
-
         next();
-    } catch (error) {
-        handleJwtError(error, res);
+    } catch (error: any) {
+        if (error.name === 'TokenExpiredError') {
+            res.status(401).json({
+                error: 'Token expiré',
+                code: 'TOKEN_EXPIRED'
+            });
+        } else {
+            res.status(401).json({
+                error: 'Token invalide',
+                code: 'INVALID_TOKEN'
+            });
+        }
     }
 };
 
-// ============================================
-// MIDDLEWARE DE VÉRIFICATION DES RÔLES
-// ============================================
+/**
+ * Comme authenticate, mais accepte un jeton EXPIRÉ tant qu'il l'est depuis
+ * moins de REFRESH_GRACE_SECONDS. Réservé à la route /auth/refresh, pour
+ * permettre de prolonger une session dont le jeton vient d'expirer.
+ */
+export const authenticateAllowExpired = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        res.status(401).json({ error: 'Token manquant', code: 'MISSING_TOKEN' });
+        return;
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET, { ignoreExpiration: true }) as TokenPayload;
+        const graceSeconds = parseInt(process.env.REFRESH_GRACE_SECONDS || String(7 * 24 * 3600)); // 7 jours
+
+        if (decoded.exp && (Math.floor(Date.now() / 1000) - decoded.exp) > graceSeconds) {
+            res.status(401).json({ error: 'Session expirée depuis trop longtemps', code: 'TOKEN_EXPIRED' });
+            return;
+        }
+
+        req.user = decoded;
+        next();
+    } catch {
+        res.status(401).json({ error: 'Token invalide', code: 'INVALID_TOKEN' });
+    }
+};
 
 /**
- * Middleware pour restreindre l'accès à certains rôles
- * @param allowedRoles - Tableau des rôles autorisés
+ * Middleware de vérification des rôles
  */
-export const requireRoles = (...allowedRoles: Array<'ADMIN' | 'MANAGER' | 'CONTRIBUTOR'>) => {
+export const requireRoles = (...allowedRoles: string[]) => {
     return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
         if (!req.user) {
             res.status(401).json({
                 error: 'Non authentifié',
-                code: 'NOT_AUTHENTICATED',
-                message: 'Authentification requise avant vérification des rôles'
+                code: 'NOT_AUTHENTICATED'
             });
             return;
         }
 
         if (!allowedRoles.includes(req.user.role)) {
-            console.log(`🚫 Accès refusé: ${req.user.userId} (${req.user.role}) → nécessite ${allowedRoles.join(' ou ')}`);
             res.status(403).json({
                 error: 'Accès non autorisé',
                 code: 'FORBIDDEN',
-                message: `Cette action nécessite l'un des rôles suivants: ${allowedRoles.join(', ')}`
+                message: `Rôle requis: ${allowedRoles.join(' ou ')}`
             });
             return;
         }
@@ -129,122 +145,11 @@ export const requireRoles = (...allowedRoles: Array<'ADMIN' | 'MANAGER' | 'CONTR
 };
 
 /**
- * Raccourci: Réservé aux administrateurs
+ * Middleware Admin uniquement
  */
 export const adminOnly = requireRoles('ADMIN');
 
 /**
- * Raccourci: Réservé aux managers et admins
+ * Middleware Manager ou Admin
  */
 export const managerOrAdmin = requireRoles('ADMIN', 'MANAGER');
-
-// ============================================
-// MIDDLEWARE OPTIONNEL (pour routes mixtes)
-// ============================================
-
-/**
- * Middleware qui tente d'authentifier mais ne bloque pas si pas de token
- * Utile pour les routes qui fonctionnent différemment selon l'auth
- */
-export const optionalAuth = (
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction
-): void => {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader) {
-        // Pas de token = utilisateur anonyme, on continue
-        next();
-        return;
-    }
-
-    // Si un token est présent, on le vérifie
-    authenticate(req, res, next);
-};
-
-// ============================================
-// GESTION DES ERREURS JWT
-// ============================================
-
-const handleJwtError = (error: unknown, res: Response): void => {
-    if (error instanceof jwt.TokenExpiredError) {
-        console.log('⏰ Token expiré');
-        res.status(401).json({
-            error: 'Token expiré',
-            code: 'TOKEN_EXPIRED',
-            message: 'Votre session a expiré, veuillez vous reconnecter',
-            expiredAt: error.expiredAt
-        });
-        return;
-    }
-
-    if (error instanceof jwt.JsonWebTokenError) {
-        console.log('❌ Token invalide:', error.message);
-        res.status(401).json({
-            error: 'Token invalide',
-            code: 'INVALID_TOKEN',
-            message: 'Le token fourni est invalide ou corrompu'
-        });
-        return;
-    }
-
-    if (error instanceof jwt.NotBeforeError) {
-        console.log('⏰ Token pas encore actif');
-        res.status(401).json({
-            error: 'Token pas encore actif',
-            code: 'TOKEN_NOT_ACTIVE',
-            message: 'Ce token n\'est pas encore valide'
-        });
-        return;
-    }
-
-    // Erreur inattendue
-    console.error('❌ Erreur auth inattendue:', error);
-    res.status(500).json({
-        error: 'Erreur d\'authentification',
-        code: 'AUTH_ERROR',
-        message: 'Une erreur inattendue est survenue lors de l\'authentification'
-    });
-};
-
-// ============================================
-// UTILITAIRES
-// ============================================
-
-/**
- * Génère un token JWT pour un utilisateur
- * @param userId - ID de l'utilisateur
- * @param role - Rôle de l'utilisateur
- * @param expiresInSeconds - Durée de validité en secondes (défaut: 7200 = 2h)
- */
-export const generateToken = (userId: string, role: string, expiresInSeconds: number = 7200): string => {
-    const payload = { userId, role };
-    const options: SignOptions = { 
-        expiresIn: expiresInSeconds 
-    };
-    
-    return jwt.sign(payload, getSecretKey(), options);
-};
-
-/**
- * Décode un token sans le vérifier (utile pour debug)
- */
-export const decodeToken = (token: string): JwtPayload | null => {
-    try {
-        return jwt.decode(token) as JwtPayload;
-    } catch {
-        return null;
-    }
-};
-
-/**
- * Vérifie si un token est proche de l'expiration
- */
-export const isTokenExpiringSoon = (token: string, thresholdSeconds: number = 300): boolean => {
-    const decoded = decodeToken(token);
-    if (!decoded) return true;
-    
-    const now = Math.floor(Date.now() / 1000);
-    return (decoded.exp - now) < thresholdSeconds;
-};
